@@ -14,8 +14,8 @@ from collections.abc import Callable, Sequence
 from html import escape
 from pathlib import Path
 
-from engine.contracts import FrameSet
-from engine.jobs import FRAMESET_FILE, REPORT_FILE
+from engine.contracts import FrameSet, TransitionSet
+from engine.jobs import FRAMESET_FILE, REPORT_FILE, TRANSITIONS_FILE
 
 # (작업 폴더, 리포트가 놓일 폴더) → HTML 조각. 결과 파일이 없으면 None.
 Section = Callable[[Path, Path], str | None]
@@ -150,7 +150,81 @@ def section_s0_frames(job_dir: Path, report_dir: Path) -> str | None:
     )
 
 
-SECTIONS: list[Section] = [section_s0_frames]
+def section_s1_transitions(job_dir: Path, report_dir: Path) -> str | None:
+    """S1 화면 전환 후보: 변화 점수 그래프, 후보마다 직전·직후 프레임."""
+    path = job_dir / TRANSITIONS_FILE
+    if not path.is_file():
+        return None
+    ts = TransitionSet.load(path)
+    frames = {f.index: f for f in FrameSet.load(job_dir / FRAMESET_FILE).frames}
+    duration = max((c.time_sec for c in ts.frame_changes), default=0.0)
+    params = ", ".join(f"{escape(str(k))}={escape(str(v))}" for k, v in ts.params.items())
+
+    def pct(v: float) -> str:
+        return f"{v * 100:.1f}%"
+
+    points = [
+        (
+            c.time_sec,
+            c.change_ratio,
+            f"#{c.index} {c.time_sec:.3f}초, 바뀐 픽셀 {pct(c.change_ratio)}",
+        )
+        for c in ts.frame_changes[1:]
+    ]
+    spans = [
+        (c.start_sec, c.end_sec, "span-yes" if c.is_transition else "span-no")
+        for c in ts.candidates
+    ]
+    lines = [
+        (ts.params.get("motion_ratio", 0), f"움직임 기준 {pct(ts.params.get('motion_ratio', 0))}"),
+    ]
+    chart = bar_chart_svg(
+        points,
+        duration=duration,
+        max_value=max((c.change_ratio for c in ts.frame_changes), default=0.0),
+        value_label=pct,
+        lines=lines,
+        spans=spans,
+        aria_label="프레임 변화 점수 그래프",
+    )
+
+    def thumb(index: int, caption: str) -> str:
+        frame = frames[index]
+        image = escape(_rel(job_dir / frame.image_path, report_dir))
+        return (
+            f'<figure><a href="{image}" target="_blank"><img src="{image}" loading="lazy" '
+            f'alt="프레임 {index}"></a><figcaption>{caption} #{index} · '
+            f"{frame.time_sec:.3f}초</figcaption></figure>"
+        )
+
+    rows = []
+    for n, c in enumerate(ts.candidates, start=1):
+        verdict = "화면 전환" if c.is_transition else "전환 아님"
+        rows.append(
+            f'<div class="cand {"yes" if c.is_transition else "no"}">'
+            f"<p><b>{n}. {verdict}</b> · {c.start_sec:.2f}~{c.end_sec:.2f}초 · "
+            f"전후 변화 {pct(c.total_change_ratio)} · 구간 최대 {pct(c.peak_change_ratio)}</p>"
+            f'<div class="pair">{thumb(c.before_index, "직전")}{thumb(c.after_index, "직후")}</div>'
+            "</div>"
+        )
+    summary = f"움직임 구간 {len(ts.candidates)}개 중 화면 전환 {len(ts.transitions)}개"
+    return (
+        "<section><h2>S1 화면 전환 후보</h2>"
+        "<table>"
+        f"<tr><th>구현</th><td>{escape(ts.implementation)}</td></tr>"
+        f"<tr><th>설정</th><td>{params}</td></tr>"
+        f"<tr><th>결과</th><td>{summary}</td></tr>"
+        "</table>"
+        "<h3>프레임 변화 점수</h3>"
+        "<p class=hint>막대 = 직전 프레임과 비교해 바뀐 픽셀 비율. "
+        "초록 배경 = 화면 전환으로 판정한 구간, 회색 배경 = 움직였지만 전환은 아닌 구간.</p>"
+        f"{chart}"
+        f"<h3>후보 ({len(ts.candidates)}개)</h3>{''.join(rows) or '<p>움직임 구간이 없다.</p>'}"
+        "</section>"
+    )
+
+
+SECTIONS: list[Section] = [section_s0_frames, section_s1_transitions]
 
 STYLE = """
 body{font-family:system-ui,sans-serif;margin:24px;color:#222}
@@ -162,6 +236,9 @@ th,td{padding:4px 10px;text-align:left;border-bottom:1px solid #eee}th{white-spa
 .hint{color:#666;font-size:13px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
 figure{margin:0}img{width:100%;border:1px solid #ddd}figcaption{font-size:11px;color:#555}
+.span-yes{fill:#d9f2dd}.span-no{fill:#e6e6e6}
+.cand{border-left:4px solid #999;padding:4px 12px;margin:12px 0}.cand.yes{border-color:#3a9a4a}
+.pair{display:grid;grid-template-columns:repeat(2,160px);gap:10px}
 """
 
 
