@@ -16,6 +16,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from engine.adapters.video import probe_video
+from engine.report import build_report
 from engine.stages.s0_extract import FRAMESET_FILE, ExtractConfig, extract_frames
 
 DEFAULT_JOBS_ROOT = Path("data/jobs")
@@ -54,6 +55,13 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    report = build_report(args.job)
+    print(f"리포트      {report}")
+    print("브라우저로 열어서 확인한다. 가림 전 원본 프레임이 들어 있으니 공유하지 않는다.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="show-once", description="화면 녹화를 단계별 가이드로")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -79,6 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"분석용 가로 크기 (기본 {defaults.analysis_width})",
     )
     extract.set_defaults(func=cmd_extract)
+
+    report = sub.add_parser("report", help="처리 결과 확인용 HTML 리포트")
+    report.add_argument("job", type=Path, help="작업 폴더 (예: data/jobs/rec01)")
+    report.set_defaults(func=cmd_report)
     return parser
 
 
@@ -87,7 +99,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if hasattr(args, "video") and not args.video.is_file():
         parser.error(f"영상 파일이 없다: {args.video}")
-    return args.func(args)
+    if args.command == "report" and not args.job.is_dir():
+        parser.error(f"작업 폴더가 없다: {args.job}")
+    try:
+        return args.func(args)
+    except FileNotFoundError as error:
+        parser.error(str(error))
 
 
 if __name__ == "__main__":
