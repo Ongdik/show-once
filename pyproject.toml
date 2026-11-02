@@ -9,6 +9,9 @@ dependencies = [
     "pillow>=13.0.0",
 ]
 
+[project.scripts]
+show-once = "engine.cli:main"
+
 [dependency-groups]
 dev = [
     "numpy>=2.5.4",
