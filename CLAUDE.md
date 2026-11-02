@@ -89,7 +89,8 @@
 ## 8. 기술 스택
 
 - Python 3.12, 패키지 관리 uv, 테스트 pytest, 린트·포맷 ruff
-- 영상 처리: ffmpeg + OpenCV
+- 영상 읽기: PyAV (FFmpeg의 Python 바인딩. 프레임별 표시 시각(PTS)을 정확히 읽기 위해 선택)
+- 이미지 처리: OpenCV (S1 화면 전환 검출부터)
 - 서버(6단계부터): FastAPI
 - 안드로이드 앱(2-1, 10단계): Kotlin
 - 개발 환경: Windows + VSCode
