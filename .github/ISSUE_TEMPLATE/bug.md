@@ -1,8 +1,8 @@
 ---
 name: 버그
 about: 예상과 다르게 동작하는 문제
-title: "fix: "
-labels: fix
+title: "[Fix] "
+labels: "🐛 fix"
 ---
 
 ## 현상

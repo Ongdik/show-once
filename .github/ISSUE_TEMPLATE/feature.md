@@ -1,8 +1,8 @@
 ---
 name: 기능
 about: 새 기능 구현 (기능 하나 = 이슈 하나)
-title: "feat: "
-labels: feat
+title: "[Feat] "
+labels: "✨ feat"
 ---
 
 ## 배경
