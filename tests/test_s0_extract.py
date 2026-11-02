@@ -99,3 +99,8 @@ def test_다시_실행하면_이전_이미지가_남지_않는다(make_video, tm
     saved = sorted(p.name for p in (job / "private" / "frames").iterdir())
     assert len(saved) == len(frameset.frames)
 
+
+def test_축소_보간법을_결과에_남긴다(make_video, tmp_path):
+    frameset = extract_frames(make_video(TIMES), tmp_path / "job")
+
+    assert frameset.params["resize_interpolation"] == "area"

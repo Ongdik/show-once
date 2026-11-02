@@ -68,6 +68,9 @@ class ExtractConfig:
     min_interval_ms: float = 33.0  # 최대 약 30fps. S2 실험으로 다시 정한다.
     analysis_width: int = 540  # 원본보다 크면 원본 크기 그대로 둔다
     image_format: str = "png"  # 무손실. JPEG은 압축 잡음이 화면 비교(S1)를 흐린다.
+    # 축소 보간법. 픽셀 값을 바꾸므로 재현을 위해 결과에 남긴다.
+    # area는 줄일 때 여러 픽셀을 평균내서, 작은 글자나 아이콘의 계단 현상(앨리어싱)이 적다.
+    resize_interpolation: str = "area"
 
 
 def make_sampler(config: ExtractConfig) -> FrameSampler:
@@ -108,7 +111,12 @@ def extract_frames(
             decoded.image.width, decoded.image.height, config.analysis_width
         )
         # yuv420p → rgb24 변환과 축소를 FFmpeg(swscale)가 한 번에 처리한다
-        rgb = decoded.image.reformat(width=width, height=height, format="rgb24")
+        rgb = decoded.image.reformat(
+            width=width,
+            height=height,
+            format="rgb24",
+            interpolation=config.resize_interpolation.upper(),
+        )
         relative = f"{FRAMES_DIR}/{len(frames):06d}.{config.image_format}"
         is_png = config.image_format == "png"
         save_options = {"compress_level": PNG_COMPRESS_LEVEL} if is_png else {}
