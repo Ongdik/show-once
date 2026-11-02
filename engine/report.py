@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from html import escape
 from pathlib import Path
 
@@ -26,54 +26,87 @@ def _rel(target: Path, base: Path) -> str:
     return Path(os.path.relpath(target, base)).as_posix()
 
 
-def interval_chart_svg(times_sec: list[float], min_interval_ms: float | None) -> str:
-    """프레임 간격 그래프. 가로축 시각(초), 세로축 직전 프레임과의 간격(ms).
+def bar_chart_svg(
+    points: list[tuple[float, float, str]],
+    duration: float,
+    max_value: float,
+    value_label: Callable[[float], str],
+    lines: Sequence[tuple[float, str]] = (),
+    spans: Sequence[tuple[float, float, str]] = (),
+    aria_label: str = "그래프",
+) -> str:
+    """시각을 가로축으로 하는 막대 그래프.
 
+    points: (시각, 값, 툴팁) / lines: (값, 이름) 기준선 / spans: (시작, 끝, CSS 클래스) 배경 구간.
     데이터 값을 화면 좌표로 바꾼다: x = 왼쪽여백 + (t / 전체시간) * 그림너비,
-    y는 SVG에서 아래로 갈수록 커지므로 y = 위여백 + 그림높이 - (간격 / 최대간격) * 그림높이.
+    y는 SVG에서 아래로 갈수록 커지므로 y = 위여백 + 그림높이 - (값 / 최댓값) * 그림높이.
     """
     width, height = 900, 220
     left, right, top, bottom = 50, 15, 15, 30
     plot_w, plot_h = width - left - right, height - top - bottom
-    gaps = [(b - a) * 1000 for a, b in zip(times_sec, times_sec[1:], strict=False)]
-    if not gaps:
-        return "<p>프레임이 2장 미만이라 간격 그래프를 그릴 수 없다.</p>"
-    duration = max(times_sec[-1], 1e-9)
-    max_gap = max(gaps)
+    duration = max(duration, 1e-9)
+    max_value = max(max_value, 1e-9)
 
     def x(t: float) -> float:
         return left + t / duration * plot_w
 
-    def y(ms: float) -> float:
-        return top + plot_h - ms / max_gap * plot_h
+    def y(v: float) -> float:
+        return top + plot_h - min(v, max_value) / max_value * plot_h
 
     parts = [
-        f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" '
-        f'aria-label="프레임 간격 그래프">',
+        f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="{escape(aria_label)}">'
+    ]
+    for t0, t1, cls in spans:
+        parts.append(
+            f'<rect x="{x(t0):.1f}" y="{top}" width="{max(x(t1) - x(t0), 2):.1f}" '
+            f'height="{plot_h}" class="{cls}"/>'
+        )
+    parts += [
         f'<line x1="{left}" y1="{top + plot_h}" x2="{width - right}" y2="{top + plot_h}" '
         f'class="axis"/>',
         f'<line x1="{left}" y1="{top}" x2="{left}" y2="{top + plot_h}" class="axis"/>',
         f'<text x="{left - 6}" y="{top + 4}" class="label" text-anchor="end">'
-        f"{max_gap:.0f}ms</text>",
+        f"{escape(value_label(max_value))}</text>",
         f'<text x="{left - 6}" y="{top + plot_h}" class="label" text-anchor="end">0</text>',
         f'<text x="{width - right}" y="{height - 8}" class="label" text-anchor="end">'
         f"{duration:.2f}초</text>",
     ]
-    if min_interval_ms is not None and 0 < min_interval_ms < max_gap:
-        yy = y(min_interval_ms)
-        parts.append(
-            f'<line x1="{left}" y1="{yy:.1f}" x2="{width - right}" y2="{yy:.1f}" class="limit"/>'
-            f'<text x="{width - right}" y="{yy - 4:.1f}" class="label" text-anchor="end">'
-            f"최소 간격 {min_interval_ms:g}ms</text>"
-        )
-    for i, (t, gap) in enumerate(zip(times_sec[1:], gaps, strict=False), start=1):
+    for value, name in lines:
+        if 0 < value < max_value:
+            yy = y(value)
+            parts.append(
+                f'<line x1="{left}" y1="{yy:.1f}" x2="{width - right}" y2="{yy:.1f}" '
+                f'class="limit"/><text x="{width - right}" y="{yy - 4:.1f}" class="label" '
+                f'text-anchor="end">{escape(name)}</text>'
+            )
+    for t, value, tip in points:
         xx = x(t)
         parts.append(
-            f'<line x1="{xx:.1f}" y1="{top + plot_h}" x2="{xx:.1f}" y2="{y(gap):.1f}" class="bar">'
-            f"<title>#{i} {t:.3f}초, 직전과 {gap:.0f}ms</title></line>"
+            f'<line x1="{xx:.1f}" y1="{top + plot_h}" x2="{xx:.1f}" y2="{y(value):.1f}" '
+            f'class="bar"><title>{escape(tip)}</title></line>'
         )
     parts.append("</svg>")
     return "".join(parts)
+
+
+def interval_chart_svg(times_sec: list[float], min_interval_ms: float | None) -> str:
+    """프레임 간격 그래프. 가로축 시각(초), 세로축 직전 프레임과의 간격(ms)."""
+    gaps = [(b - a) * 1000 for a, b in zip(times_sec, times_sec[1:], strict=False)]
+    if not gaps:
+        return "<p>프레임이 2장 미만이라 간격 그래프를 그릴 수 없다.</p>"
+    points = [
+        (t, gap, f"#{i} {t:.3f}초, 직전과 {gap:.0f}ms")
+        for i, (t, gap) in enumerate(zip(times_sec[1:], gaps, strict=False), start=1)
+    ]
+    lines = [(min_interval_ms, f"최소 간격 {min_interval_ms:g}ms")] if min_interval_ms else []
+    return bar_chart_svg(
+        points,
+        duration=times_sec[-1],
+        max_value=max(gaps),
+        value_label=lambda v: f"{v:.0f}ms",
+        lines=lines,
+        aria_label="프레임 간격 그래프",
+    )
 
 
 def section_s0_frames(job_dir: Path, report_dir: Path) -> str | None:
