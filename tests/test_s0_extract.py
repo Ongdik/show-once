@@ -82,3 +82,11 @@ def test_첫_프레임은_항상_남기고_경계값은_포함한다():
     sampler = MinIntervalSampler(min_interval_ms=33)
 
     assert [sampler.keep(t) for t in (0.0, 0.032, 0.033, 0.065)] == [True, False, True, False]
+
+
+def test_원본_프레임은_비공개_폴더에_저장한다(make_video, tmp_path):
+    frameset = extract_frames(make_video(TIMES), tmp_path / "job")
+
+    assert all(f.image_path.startswith("private/") for f in frameset.frames)
+    assert not (tmp_path / "job" / "public").exists()
+

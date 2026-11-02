@@ -15,9 +15,11 @@ from typing import Protocol
 
 from engine.adapters.video import iter_decoded_frames, probe_video
 from engine.contracts import Frame, FrameSet
+from engine.jobs import PRIVATE_DIR
 
-FRAMES_DIR = "frames"
-FRAMESET_FILE = "frames.json"
+# 가림 전 원본 프레임이므로 비공개 폴더에 둔다
+FRAMES_DIR = f"{PRIVATE_DIR}/frames"
+FRAMESET_FILE = f"{PRIVATE_DIR}/frames.json"
 
 # PNG는 무손실이라 압축 수준이 달라도 픽셀은 같다. 수준 6(기본) 73ms → 수준 1 36ms/프레임,
 # 크기는 약 11% 커진다 (실측, 540x1170). 분석용 중간 파일이라 속도를 택했다.
