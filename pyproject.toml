@@ -1,0 +1,34 @@
+[project]
+name = "show-once"
+version = "0.1.0"
+description = "화면 녹화 한 번을 부모님이 혼자 따라 할 수 있는 단계별 가이드로 바꾸는 영상 분석 파이프라인"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "av>=19.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "numpy>=2.5.4",
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["engine"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/F: 기본 오류, I: import 정렬, UP: 최신 문법, B: 흔한 버그 패턴
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
