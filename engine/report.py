@@ -53,9 +53,8 @@ def bar_chart_svg(
     def y(v: float) -> float:
         return top + plot_h - min(v, max_value) / max_value * plot_h
 
-    parts = [
-        f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="{escape(aria_label)}">'
-    ]
+    label = escape(aria_label)
+    parts = [f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="{label}">']
     for t0, t1, cls in spans:
         parts.append(
             f'<rect x="{x(t0):.1f}" y="{top}" width="{max(x(t1) - x(t0), 2):.1f}" '
