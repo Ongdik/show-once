@@ -10,6 +10,7 @@ PyAV(FFmpeg의 Python 바인딩)로 영상을 읽는다.
 from __future__ import annotations
 
 import statistics
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -106,3 +107,32 @@ def probe_video(path: Path) -> VideoProbe:
         is_variable_frame_rate=is_vfr,
         frame_times_sec=times,
     )
+
+
+@dataclass(frozen=True)
+class DecodedFrame:
+    """디코딩된 프레임 하나와 그 시각."""
+
+    source_index: int  # 디코딩된 순서 (0부터)
+    time_sec: float  # 첫 프레임 기준 시각(초)
+    image: av.VideoFrame
+
+
+def iter_decoded_frames(path: Path) -> Iterator[DecodedFrame]:
+    """영상을 디코딩해 프레임을 표시 순서대로 하나씩 돌려준다.
+
+    디코더는 B 프레임이 있어도 표시 순서로 프레임을 내보낸다.
+    시각은 probe_video와 같은 기준(첫 프레임 0초)으로 맞춘다.
+    """
+    with av.open(str(path)) as container:
+        stream = container.streams.video[0]
+        start: float | None = None
+        index = 0
+        for frame in container.decode(stream):
+            if frame.pts is None:
+                continue
+            t = float(frame.pts * frame.time_base)
+            if start is None:
+                start = t
+            yield DecodedFrame(source_index=index, time_sec=t - start, image=frame)
+            index += 1

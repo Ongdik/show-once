@@ -61,6 +61,10 @@
 - 흐름: 이슈 생성 → 브랜치 → 커밋 → PR → 리뷰(셀프) → 머지
 - **이슈 하나 = PR 하나 = 머지할 수 있는 기능 하나.** 이슈를 크게 잡지 않는다. 진행 중 따로 떼어낼 만한 기능이 보이면, 지금까지를 PR로 머지하고 새 이슈를 만들어 이어간다.
 - 브랜치 이름: `타입/#이슈번호-짧은-설명` (예: `feat/#3-frame-extraction`)
+- 이슈 제목: `[Feat] 제목`, `[Fix] 제목`처럼 타입을 대괄호에 넣고 첫 글자만 대문자로 쓴다.
+- PR 제목: `[Feat/#이슈번호] 제목` (예: `[Feat/#3] S0 프레임 추출`)
+- 라벨: 이모지를 앞에 붙인 타입 라벨(`✨ feat`, `🐛 fix`, `♻️ refactor`, `📝 docs`, `✅ test`, `📦 chore`, `🧪 experiment`)을 이슈와 PR에 단다. 목록은 `.github/labels.yml`.
+- 커밋 메시지 형식(`feat: ...`)은 4번 그대로 둔다.
 - PR은 `.github/pull_request_template.md` 양식을 채운다. 특히 **"왜 이렇게 했나"** 칸을 비우지 않는다.
 - 이슈는 `.github/ISSUE_TEMPLATE`의 양식(기능 / 실험 / 버그)을 쓴다.
 
@@ -90,7 +94,8 @@
 
 - Python 3.12, 패키지 관리 uv, 테스트 pytest, 린트·포맷 ruff
 - 영상 읽기: PyAV (FFmpeg의 Python 바인딩. 프레임별 표시 시각(PTS)을 정확히 읽기 위해 선택)
-- 이미지 처리: OpenCV (S1 화면 전환 검출부터)
+- 이미지 처리: OpenCV (S1 화면 전환 검출부터), 이미지 저장: Pillow
+- 작업 폴더 구조는 `engine/jobs.py`에서만 정한다: `private/`(가림 전, S0~S4) / `public/`(가림 처리본, S5만 쓴다)
 - 서버(6단계부터): FastAPI
 - 안드로이드 앱(2-1, 10단계): Kotlin
 - 개발 환경: Windows + VSCode

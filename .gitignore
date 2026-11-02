@@ -1,5 +1,8 @@
 # 데이터: 녹화, 프레임, 처리 결과는 절대 커밋하지 않는다
 data/
+# 작업 폴더가 data/ 밖에 만들어져도 결과가 커밋되지 않게 한다 (engine/jobs.py)
+private/
+public/
 *.mp4
 *.mov
 *.webm

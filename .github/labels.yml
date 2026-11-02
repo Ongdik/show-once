@@ -1,29 +1,23 @@
 # 이 저장소에서 쓰는 라벨 목록 (참고용)
-# GitHub 웹 Issues > Labels 에서 만들거나, gh CLI로 만든다.
-- name: feat
+# 이름 앞에 이모지를 붙인다. GitHub 웹 Issues > Labels 에서 만들거나 API로 만든다.
+- name: "✨ feat"
   color: "1d76db"
   description: 새 기능
-- name: fix
+- name: "🐛 fix"
   color: "d73a4a"
   description: 버그 수정
-- name: refactor
+- name: "♻️ refactor"
   color: "a2eeef"
   description: 구조 개선
-- name: docs
+- name: "📝 docs"
   color: "0075ca"
   description: 문서
-- name: test
+- name: "✅ test"
   color: "bfd4f2"
   description: 테스트
-- name: chore
+- name: "📦 chore"
   color: "ededed"
   description: 설정, 의존성 등
-- name: experiment
+- name: "🧪 experiment"
   color: "fbca04"
   description: 가설 검증 실험
-- name: study
-  color: "c5def5"
-  description: 이론 공부가 필요한 작업
-- name: decision
-  color: "5319e7"
-  description: 결정이 필요하거나 결정 기록을 남길 작업

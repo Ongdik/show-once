@@ -1,8 +1,8 @@
 ---
 name: 실험
 about: 가설을 세우고 수치로 검증하는 실험
-title: "experiment: "
-labels: experiment
+title: "[Experiment] "
+labels: "🧪 experiment"
 ---
 
 ## 가설
