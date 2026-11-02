@@ -90,3 +90,12 @@ def test_원본_프레임은_비공개_폴더에_저장한다(make_video, tmp_pa
     assert all(f.image_path.startswith("private/") for f in frameset.frames)
     assert not (tmp_path / "job" / "public").exists()
 
+
+def test_다시_실행하면_이전_이미지가_남지_않는다(make_video, tmp_path):
+    job = tmp_path / "job"
+    extract_frames(make_video(TIMES), job, ExtractConfig(min_interval_ms=0))
+    frameset = extract_frames(make_video(TIMES), job, ExtractConfig(min_interval_ms=500))
+
+    saved = sorted(p.name for p in (job / "private" / "frames").iterdir())
+    assert len(saved) == len(frameset.frames)
+

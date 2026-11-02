@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Protocol
@@ -94,7 +95,10 @@ def extract_frames(
     info = probe_video(video_path).info
 
     frames_dir = job_dir / FRAMES_DIR
-    frames_dir.mkdir(parents=True, exist_ok=True)
+    # 같은 작업 폴더에서 다시 돌리면 이전 실행의 이미지가 섞이지 않게 비운다
+    if frames_dir.exists():
+        shutil.rmtree(frames_dir)
+    frames_dir.mkdir(parents=True)
 
     frames: list[Frame] = []
     for decoded in iter_decoded_frames(video_path):
