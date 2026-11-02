@@ -31,11 +31,12 @@ class Frame:
 
     time_sec는 프레임 번호로 계산한 값이 아니라 영상에 기록된 표시 시각
     (PTS x time_base)이다. 가변 프레임률 영상에서도 맞는 시각을 쓰기 위해서다.
+    기준점은 첫 프레임이다: 첫 프레임의 시각을 빼서 첫 프레임을 0초로 맞춘다.
     """
 
     index: int  # 추출된 프레임 중 몇 번째인지 (0부터)
     source_index: int  # 원본 영상에서 디코딩된 순서 (0부터)
-    time_sec: float  # 영상 시작부터의 시각(초)
+    time_sec: float  # 첫 프레임 기준 시각(초)
     image_path: str  # 작업 폴더 기준 상대 경로 (예: "frames/000012.png")
     width: int
     height: int
