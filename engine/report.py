@@ -212,7 +212,8 @@ def section_s1_transitions(job_dir: Path, report_dir: Path) -> str | None:
         rows.append(
             f'<div class="cand {"yes" if c.is_transition else "no"}">'
             f"<p><b>{n}. {verdict}</b> · {c.start_sec:.2f}~{c.end_sec:.2f}초 · "
-            f"전후 변화 {pct(c.total_change_ratio)} · 구간 최대 {pct(c.peak_change_ratio)}</p>"
+            f"전후 변화 {pct(c.total_change_ratio)} · 구간 최대 {pct(c.peak_change_ratio)}"
+            f"{'' if c.settled else ' · <span class=warn>영상이 움직이는 중에 끝남</span>'}</p>"
             f'<div class="pair">{thumb(c.before_index, "직전")}{thumb(c.after_index, "직후")}</div>'
             "</div>"
         )

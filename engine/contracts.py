@@ -117,6 +117,7 @@ class TransitionCandidate:
     before_index는 움직임이 시작되기 직전의 안정된 프레임,
     after_index는 움직임이 끝난 뒤 안정된 프레임이다.
     start_sec는 처음으로 바뀐 프레임의 시각, end_sec는 after 프레임의 시각이다.
+    영상이 움직이는 도중에 끝나면 after 프레임은 안정되지 않았을 수 있다 (settled=False).
     """
 
     before_index: int
@@ -126,6 +127,7 @@ class TransitionCandidate:
     peak_change_ratio: float  # 구간 안 이웃 프레임 변화 중 가장 큰 값
     total_change_ratio: float  # before와 after 프레임을 직접 비교한 변화
     is_transition: bool  # total_change_ratio가 기준 이상이면 화면 전환 후보
+    settled: bool = True  # after 프레임 뒤에 변화가 멈춘 프레임이 있었는지
 
     def __post_init__(self) -> None:
         if not self.before_index < self.after_index:

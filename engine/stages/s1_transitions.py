@@ -111,6 +111,8 @@ def detect_transitions(job_dir: Path, config: TransitionConfig | None = None) ->
                 peak_change_ratio=round(max(ratios[first : last + 1]), 6),
                 total_change_ratio=round(total, 6),
                 is_transition=total >= config.transition_ratio,
+                # 마지막 프레임까지 움직였다면 after 프레임이 안정된 화면인지 알 수 없다
+                settled=last < len(frames) - 1,
             )
         )
 

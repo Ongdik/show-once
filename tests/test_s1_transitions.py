@@ -168,3 +168,22 @@ def test_S0를_다시_돌려_프레임이_달라지면_리포트가_알려준다
     html = build_report(job).read_text(encoding="utf-8")
 
     assert "S1을 다시 실행해야 한다" in html
+
+
+def test_영상이_움직이는_중에_끝나면_안정되지_않았다고_표시한다(make_scene_video, tmp_path):
+    a, b = screen_a(), screen_b()
+    scenes = [(0.0, a), (0.5, a), (0.6, blend(a, b, 0.5)), (0.7, b)]
+
+    result = run(tmp_path / "job", make_scene_video, scenes)
+
+    assert len(result.candidates) == 1
+    assert not result.candidates[0].settled
+
+
+def test_움직임이_끝난_뒤_프레임이_있으면_안정되었다고_본다(make_scene_video, tmp_path):
+    a, b = screen_a(), screen_b()
+    scenes = [(0.0, a), (0.5, b), (1.0, b)]
+
+    result = run(tmp_path / "job", make_scene_video, scenes)
+
+    assert result.candidates[0].settled
