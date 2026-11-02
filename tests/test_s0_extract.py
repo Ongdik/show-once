@@ -2,8 +2,8 @@ import pytest
 from PIL import Image
 
 from engine.contracts import FrameSet
+from engine.jobs import FRAMESET_FILE
 from engine.stages.s0_extract import (
-    FRAMESET_FILE,
     ExtractConfig,
     MinIntervalSampler,
     extract_frames,

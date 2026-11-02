@@ -76,3 +76,15 @@ def test_다른_형식_버전은_읽지_않는다():
 
     with pytest.raises(ValueError, match="형식 버전"):
         FrameSet.from_dict(data)
+
+
+def test_작업_폴더_밖을_가리키는_경로는_거부한다():
+    with pytest.raises(ValueError, match="밖을 가리킬 수 없다"):
+        Frame(
+            index=0,
+            source_index=0,
+            time_sec=0.0,
+            image_path="private/../../outside.png",
+            width=1,
+            height=1,
+        )

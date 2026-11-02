@@ -44,8 +44,12 @@ class Frame:
     def __post_init__(self) -> None:
         if self.time_sec < 0:
             raise ValueError(f"프레임 시각은 0 이상이어야 한다: {self.time_sec}")
-        if Path(self.image_path).is_absolute():
+        path = Path(self.image_path)
+        if path.is_absolute():
             raise ValueError(f"이미지 경로는 작업 폴더 기준 상대 경로여야 한다: {self.image_path}")
+        if ".." in path.parts:
+            # 작업 폴더 밖(예: 비공개 폴더 밖)을 가리키지 못하게 막는다
+            raise ValueError(f"이미지 경로는 작업 폴더 밖을 가리킬 수 없다: {self.image_path}")
 
 
 @dataclass(frozen=True)
