@@ -15,10 +15,7 @@ from html import escape
 from pathlib import Path
 
 from engine.contracts import FrameSet
-from engine.jobs import PRIVATE_DIR
-from engine.stages.s0_extract import FRAMESET_FILE
-
-REPORT_FILE = f"{PRIVATE_DIR}/report.html"
+from engine.jobs import FRAMESET_FILE, REPORT_FILE
 
 # (작업 폴더, 리포트가 놓일 폴더) → HTML 조각. 결과 파일이 없으면 None.
 Section = Callable[[Path, Path], str | None]

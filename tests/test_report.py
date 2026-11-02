@@ -1,4 +1,5 @@
-from engine.report import REPORT_FILE, build_report, interval_chart_svg
+from engine.jobs import REPORT_FILE
+from engine.report import build_report, interval_chart_svg
 from engine.stages.s0_extract import ExtractConfig, extract_frames
 
 TIMES = [0.0, 0.040, 0.850, 1.700]

@@ -16,8 +16,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from engine.adapters.video import probe_video
+from engine.jobs import FRAMESET_FILE
 from engine.report import build_report
-from engine.stages.s0_extract import FRAMESET_FILE, ExtractConfig, extract_frames
+from engine.stages.s0_extract import ExtractConfig, extract_frames
 
 DEFAULT_JOBS_ROOT = Path("data/jobs")
 

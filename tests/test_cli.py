@@ -2,7 +2,7 @@ import pytest
 
 from engine import cli
 from engine.contracts import FrameSet
-from engine.stages.s0_extract import FRAMESET_FILE
+from engine.jobs import FRAMESET_FILE
 
 TIMES = [0.0, 0.010, 0.050, 0.850, 1.700]
 
