@@ -149,3 +149,22 @@ def test_명령어와_리포트(make_scene_video, tmp_path, capsys):
     html = build_report(job).read_text(encoding="utf-8")
     assert "S1 화면 전환 후보" in html
     assert "직전 #0" in html and "직후 #1" in html
+
+
+def test_어떤_S0_결과로_만들었는지_남긴다(make_scene_video, tmp_path):
+    result = run(tmp_path / "job", make_scene_video, [(0.0, screen_a()), (0.5, screen_b())])
+
+    assert result.params["input"]["frame_count"] == 2
+    assert result.params["input"]["implementation"] == "pyav-min-interval"
+
+
+def test_S0를_다시_돌려_프레임이_달라지면_리포트가_알려준다(make_scene_video, tmp_path):
+    job = tmp_path / "job"
+    video = make_scene_video([(0.0, screen_a()), (0.05, screen_a()), (0.5, screen_b())])
+    extract_frames(video, job, ExtractConfig(min_interval_ms=0))
+    detect_transitions(job)
+    extract_frames(video, job, ExtractConfig(min_interval_ms=100))  # 프레임 수가 바뀜
+
+    html = build_report(job).read_text(encoding="utf-8")
+
+    assert "S1을 다시 실행해야 한다" in html

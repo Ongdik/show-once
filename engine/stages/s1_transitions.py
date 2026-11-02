@@ -114,9 +114,17 @@ def detect_transitions(job_dir: Path, config: TransitionConfig | None = None) ->
             )
         )
 
+    # 어떤 S0 결과로 만들었는지 남긴다. S0를 다른 설정으로 다시 돌리면 프레임 번호가 바뀌어
+    # 이 결과와 맞지 않게 되므로, 읽는 쪽이 어긋남을 알아챌 수 있어야 한다.
+    params = asdict(config)
+    params["input"] = {
+        "implementation": frameset.implementation,
+        "params": frameset.params,
+        "frame_count": len(frames),
+    }
     result = TransitionSet(
         implementation=config.detector,
-        params=asdict(config),
+        params=params,
         frame_changes=changes,
         candidates=candidates,
     )

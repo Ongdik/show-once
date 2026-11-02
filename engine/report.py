@@ -157,8 +157,17 @@ def section_s1_transitions(job_dir: Path, report_dir: Path) -> str | None:
         return None
     ts = TransitionSet.load(path)
     frames = {f.index: f for f in FrameSet.load(job_dir / FRAMESET_FILE).frames}
+    expected = ts.params.get("input", {}).get("frame_count")
+    if expected is not None and expected != len(frames):
+        return (
+            "<section><h2>S1 화면 전환 후보</h2><p class=warn>이 결과는 프레임 "
+            f"{expected}장으로 만들었는데 지금 S0 결과는 {len(frames)}장이다. "
+            "S0를 다시 돌린 뒤 S1을 다시 실행해야 한다.</p></section>"
+        )
     duration = max((c.time_sec for c in ts.frame_changes), default=0.0)
-    params = ", ".join(f"{escape(str(k))}={escape(str(v))}" for k, v in ts.params.items())
+    params = ", ".join(
+        f"{escape(str(k))}={escape(str(v))}" for k, v in ts.params.items() if k != "input"
+    )
 
     def pct(v: float) -> str:
         return f"{v * 100:.1f}%"
@@ -239,6 +248,7 @@ figure{margin:0}img{width:100%;border:1px solid #ddd}figcaption{font-size:11px;c
 .span-yes{fill:#d9f2dd}.span-no{fill:#e6e6e6}
 .cand{border-left:4px solid #999;padding:4px 12px;margin:12px 0}.cand.yes{border-color:#3a9a4a}
 .pair{display:grid;grid-template-columns:repeat(2,160px);gap:10px}
+.warn{color:#b3261e;font-weight:600}
 """
 
 
