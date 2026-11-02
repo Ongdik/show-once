@@ -4,10 +4,13 @@ version = "0.1.0"
 description = "화면 녹화 한 번을 부모님이 혼자 따라 할 수 있는 단계별 가이드로 바꾸는 영상 분석 파이프라인"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "av>=19.0.2",
+]
 
 [dependency-groups]
 dev = [
+    "numpy>=2.5.4",
     "pytest>=8",
     "ruff>=0.6",
 ]
