@@ -187,3 +187,14 @@ def test_움직임이_끝난_뒤_프레임이_있으면_안정되었다고_본�
     result = run(tmp_path / "job", make_scene_video, scenes)
 
     assert result.candidates[0].settled
+
+
+def test_명령어에서_기준값을_바꿀_수_있다(make_scene_video, tmp_path):
+    job = tmp_path / "job"
+    extract_frames(make_scene_video([(0.0, screen_a()), (0.5, screen_b())]), job)
+
+    cli.main(["transitions", str(job), "--motion-ratio", "0.5", "--transition-ratio", "0.9"])
+
+    saved = TransitionSet.load(job / TRANSITIONS_FILE)
+    assert saved.params["motion_ratio"] == 0.5
+    assert saved.params["transition_ratio"] == 0.9
