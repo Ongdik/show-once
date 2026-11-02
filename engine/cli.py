@@ -2,6 +2,7 @@
 
     uv run show-once probe   <영상>                 영상 정보와 프레임 간격 확인
     uv run show-once extract <영상> [옵션]          S0 프레임 추출
+    uv run show-once transitions <작업 폴더>        S1 화면 전환 후보
     uv run show-once report  <작업 폴더>            처리 결과 확인용 HTML 리포트
 
 명령이 몇 개뿐이라 표준 라이브러리 argparse를 쓴다.
@@ -16,9 +17,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from engine.adapters.video import probe_video
-from engine.jobs import FRAMESET_FILE
+from engine.jobs import FRAMESET_FILE, TRANSITIONS_FILE
 from engine.report import build_report
 from engine.stages.s0_extract import ExtractConfig, extract_frames
+from engine.stages.s1_transitions import detect_transitions
 
 DEFAULT_JOBS_ROOT = Path("data/jobs")
 
@@ -56,6 +58,23 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_transitions(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    result = detect_transitions(args.job)
+    elapsed = time.perf_counter() - started
+    print(
+        f"움직임 구간 {len(result.candidates)}개 중 화면 전환 {len(result.transitions)}개"
+        f" ({elapsed:.1f}초)"
+    )
+    for c in result.transitions:
+        print(
+            f"  {c.start_sec:6.2f}~{c.end_sec:6.2f}초  프레임 #{c.before_index}→#{c.after_index}"
+            f"  전후 변화 {c.total_change_ratio * 100:.1f}%"
+        )
+    print(f"결과        {args.job / TRANSITIONS_FILE}")
+    return 0
+
+
 def cmd_report(args: argparse.Namespace) -> int:
     report = build_report(args.job)
     print(f"리포트      {report}")
@@ -89,6 +108,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     extract.set_defaults(func=cmd_extract)
 
+    transitions = sub.add_parser("transitions", help="S1 화면 전환 후보")
+    transitions.add_argument("job", type=Path, help="작업 폴더 (예: data/jobs/rec01)")
+    transitions.set_defaults(func=cmd_transitions)
+
     report = sub.add_parser("report", help="처리 결과 확인용 HTML 리포트")
     report.add_argument("job", type=Path, help="작업 폴더 (예: data/jobs/rec01)")
     report.set_defaults(func=cmd_report)
@@ -100,7 +123,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if hasattr(args, "video") and not args.video.is_file():
         parser.error(f"영상 파일이 없다: {args.video}")
-    if args.command == "report" and not args.job.is_dir():
+    if args.command in ("transitions", "report") and not args.job.is_dir():
         parser.error(f"작업 폴더가 없다: {args.job}")
     try:
         return args.func(args)
