@@ -99,3 +99,78 @@ class FrameSet:
     @classmethod
     def load(cls, path: Path) -> FrameSet:
         return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+@dataclass(frozen=True)
+class FrameChange:
+    """이웃 프레임 사이 변화량. S1이 계산한 프레임별 점수."""
+
+    index: int  # FrameSet의 프레임 index (직전 프레임과 비교한 값, 첫 프레임은 0)
+    time_sec: float
+    change_ratio: float  # 바뀐 픽셀 비율 (0~1)
+
+
+@dataclass(frozen=True)
+class TransitionCandidate:
+    """움직임 구간 하나와 그 구간이 화면 전환인지 판정한 결과.
+
+    before_index는 움직임이 시작되기 직전의 안정된 프레임,
+    after_index는 움직임이 끝난 뒤 안정된 프레임이다.
+    start_sec는 처음으로 바뀐 프레임의 시각, end_sec는 after 프레임의 시각이다.
+    """
+
+    before_index: int
+    after_index: int
+    start_sec: float
+    end_sec: float
+    peak_change_ratio: float  # 구간 안 이웃 프레임 변화 중 가장 큰 값
+    total_change_ratio: float  # before와 after 프레임을 직접 비교한 변화
+    is_transition: bool  # total_change_ratio가 기준 이상이면 화면 전환 후보
+
+    def __post_init__(self) -> None:
+        if not self.before_index < self.after_index:
+            raise ValueError("before_index는 after_index보다 앞이어야 한다")
+        if self.end_sec < self.start_sec:
+            raise ValueError("end_sec는 start_sec보다 뒤여야 한다")
+
+
+@dataclass(frozen=True)
+class TransitionSet:
+    """S1(화면 전환 후보)의 결과. S3(행동 단계 조립)의 입력이 된다."""
+
+    implementation: str
+    params: dict[str, Any] = field(default_factory=dict)
+    frame_changes: list[FrameChange] = field(default_factory=list)
+    candidates: list[TransitionCandidate] = field(default_factory=list)
+    stage: str = "S1"
+    schema_version: int = SCHEMA_VERSION
+
+    @property
+    def transitions(self) -> list[TransitionCandidate]:
+        return [c for c in self.candidates if c.is_transition]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TransitionSet:
+        version = data.get("schema_version")
+        if version != SCHEMA_VERSION:
+            raise ValueError(f"지원하지 않는 형식 버전: {version} (현재 {SCHEMA_VERSION})")
+        return cls(
+            implementation=data["implementation"],
+            params=data.get("params", {}),
+            frame_changes=[FrameChange(**c) for c in data.get("frame_changes", [])],
+            candidates=[TransitionCandidate(**c) for c in data.get("candidates", [])],
+            stage=data.get("stage", "S1"),
+            schema_version=version,
+        )
+
+    def save(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        text = json.dumps(self.to_dict(), ensure_ascii=False, indent=2)
+        path.write_text(text, encoding="utf-8")
+
+    @classmethod
+    def load(cls, path: Path) -> TransitionSet:
+        return cls.from_dict(json.loads(path.read_text(encoding="utf-8")))

@@ -4,6 +4,7 @@
     ├── private/   원본에서 나온 것 (가림 전). 비공개. S0~S4가 쓴다.
     │   ├── frames/
     │   ├── frames.json
+    │   ├── transitions.json
     │   └── report.html   확인용 리포트 (원본 프레임을 보여주므로 비공개)
     └── public/    가림 처리된 것만. S5(가림)만 쓴다. (아직 없음)
 
@@ -17,6 +18,9 @@ PUBLIC_DIR = "public"
 # S0 프레임 추출 결과
 FRAMES_DIR = f"{PRIVATE_DIR}/frames"
 FRAMESET_FILE = f"{PRIVATE_DIR}/frames.json"
+
+# S1 화면 전환 후보 결과
+TRANSITIONS_FILE = f"{PRIVATE_DIR}/transitions.json"
 
 # 확인용 리포트
 REPORT_FILE = f"{PRIVATE_DIR}/report.html"

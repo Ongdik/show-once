@@ -88,3 +88,29 @@ def test_작업_폴더_밖을_가리키는_경로는_거부한다():
             width=1,
             height=1,
         )
+
+
+def test_화면_전환_결과를_저장하고_다시_읽으면_같은_값이다(tmp_path):
+    from engine.contracts import FrameChange, TransitionCandidate, TransitionSet
+
+    original = TransitionSet(
+        implementation="pixel-diff",
+        params={"motion_ratio": 0.02},
+        frame_changes=[FrameChange(0, 0.0, 0.0), FrameChange(1, 0.5, 0.3)],
+        candidates=[
+            TransitionCandidate(0, 1, 0.5, 0.5, 0.3, 0.3, True),
+        ],
+    )
+    path = tmp_path / "transitions.json"
+
+    original.save(path)
+
+    assert TransitionSet.load(path) == original
+    assert len(TransitionSet.load(path).transitions) == 1
+
+
+def test_전환_구간의_앞뒤가_뒤바뀌면_거부한다():
+    from engine.contracts import TransitionCandidate
+
+    with pytest.raises(ValueError, match="before_index"):
+        TransitionCandidate(3, 3, 0.5, 0.5, 0.3, 0.3, True)
