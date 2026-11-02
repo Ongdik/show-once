@@ -44,3 +44,13 @@ def test_번호로_계산한_시각은_가변_프레임률에서_크게_틀린�
     errors = [abs(i / fps - t) for i, t in enumerate(probe.frame_times_sec)]
 
     assert max(errors) > 0.3
+
+
+def test_디코딩한_시각이_영상_정보_확인의_시각과_같다(make_video):
+    """S0 추출(디코딩)과 영상 정보 확인(디먹싱)이 같은 시각 기준을 쓰는지 확인한다."""
+    from engine.adapters.video import iter_decoded_frames
+
+    video = make_video(VFR_TIMES)
+    decoded = [f.time_sec for f in iter_decoded_frames(video)]
+
+    assert decoded == pytest.approx(probe_video(video).frame_times_sec, abs=1e-6)
