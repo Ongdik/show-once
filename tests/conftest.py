@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 MakeVideo = Callable[[Sequence[float]], Path]
+MakeSceneVideo = Callable[[Sequence[tuple[float, np.ndarray]]], Path]
 
 
 def write_video(path: Path, times_sec: Sequence[float], width: int = 64, height: int = 128) -> Path:
@@ -22,17 +23,28 @@ def write_video(path: Path, times_sec: Sequence[float], width: int = 64, height:
 
     프레임마다 밝기를 다르게 해서 서로 구분되게 한다.
     """
+    images = [
+        np.full((height, width, 3), (i * 37) % 256, dtype=np.uint8) for i in range(len(times_sec))
+    ]
+    return write_scene_video(path, list(zip(times_sec, images, strict=True)))
+
+
+def write_scene_video(path: Path, scenes: Sequence[tuple[float, np.ndarray]]) -> Path:
+    """(시각, RGB 이미지) 목록으로 mp4를 만든다. 화면 내용을 직접 그린 테스트 영상용.
+
+    압축 잡음이 변화 점수를 흐리지 않도록 비트레이트를 크게 잡는다.
+    """
+    height, width = scenes[0][1].shape[:2]
     time_base = Fraction(1, 1000)  # 1ms 단위
     with av.open(str(path), mode="w") as container:
         stream = container.add_stream("mpeg4", rate=1000)
         stream.width = width
         stream.height = height
         stream.pix_fmt = "yuv420p"
+        stream.bit_rate = 20_000_000
         stream.time_base = time_base
         stream.codec_context.time_base = time_base
-        for i, t in enumerate(times_sec):
-            level = (i * 37) % 256
-            image = np.full((height, width, 3), level, dtype=np.uint8)
+        for t, image in scenes:
             frame = av.VideoFrame.from_ndarray(image, format="rgb24")
             frame.pts = round(t * 1000)
             frame.time_base = time_base
@@ -49,5 +61,15 @@ def make_video(tmp_path: Path) -> MakeVideo:
 
     def _make(times_sec: Sequence[float]) -> Path:
         return write_video(tmp_path / f"video_{next(counter)}.mp4", times_sec)
+
+    return _make
+
+
+@pytest.fixture
+def make_scene_video(tmp_path: Path) -> MakeSceneVideo:
+    counter = iter(range(1000))
+
+    def _make(scenes: Sequence[tuple[float, np.ndarray]]) -> Path:
+        return write_scene_video(tmp_path / f"scene_{next(counter)}.mp4", scenes)
 
     return _make
