@@ -95,7 +95,7 @@
 
 - Python 3.12, 패키지 관리 uv, 테스트 pytest, 린트·포맷 ruff
 - 영상 읽기: PyAV (FFmpeg의 Python 바인딩. 프레임별 표시 시각(PTS)을 정확히 읽기 위해 선택)
-- 이미지 처리: OpenCV (S1 화면 전환 검출부터), 이미지 저장: Pillow
+- 이미지 처리: numpy (픽셀 차이), 이미지 저장: Pillow. OpenCV는 numpy로 부족해질 때(특징점 매칭 등) 도입한다
 - 작업 폴더 구조는 `engine/jobs.py`에서만 정한다: `private/`(가림 전, S0~S4) / `public/`(가림 처리본, S5만 쓴다)
 - 서버(6단계부터): FastAPI
 - 안드로이드 앱(2-1, 10단계): Kotlin
