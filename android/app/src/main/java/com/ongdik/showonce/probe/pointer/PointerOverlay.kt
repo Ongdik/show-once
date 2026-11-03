@@ -18,7 +18,7 @@ import com.ongdik.showonce.probe.snapshot.ScreenInfo
  * FLAG_NOT_FOCUSABLE은 키보드 입력을 가로채지 않게 한다.
  *
  * WindowManager는 반드시 접근성 서비스 자신의 것(service.getSystemService)을 써야 이 창 종류를 띄울 수 있다.
- * 모든 함수는 화면 스레드에서 부른다.
+ * 모든 함수는 화면 스레드에서 부른다. (10번에서 다른 스레드의 매칭 결과로 부를 때는 handler.post로 넘긴다)
  */
 class PointerOverlay(
     private val context: Context,
@@ -26,8 +26,11 @@ class PointerOverlay(
 ) {
 
     private var pointerView: PointerView? = null
-    private var centerRatioX = 0.5
-    private var centerRatioY = 0.5
+    /** 지금(또는 마지막으로) 띄운 고리 중심의 비율 위치 */
+    var centerRatioX = 0.5
+        private set
+    var centerRatioY = 0.5
+        private set
 
     val isShowing: Boolean get() = pointerView != null
 

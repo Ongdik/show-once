@@ -2,6 +2,7 @@ package com.ongdik.showonce.probe
 
 import android.accessibilityservice.AccessibilityService
 import android.hardware.display.DisplayManager
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
@@ -76,7 +77,9 @@ class ProbeAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         ProbeLog.initialize(this)
         startRecordFile()
-        // 접근성 오버레이는 서비스 자신의 WindowManager로만 띄울 수 있다
+        // 접근성 오버레이는 서비스 자신의 WindowManager로만 띄울 수 있다.
+        // 같은 서비스에 연결이 두 번 오면 떠 있던 옛 창을 지울 방법이 없어지므로 먼저 내린다.
+        pointerOverlay?.hide()
         pointerOverlay = PointerOverlay(this, getSystemService(WindowManager::class.java))
         connectedServiceReference = WeakReference(this)
         ProbeLog.info("접근성 서비스 연결됨")
@@ -174,11 +177,12 @@ class ProbeAccessibilityService : AccessibilityService() {
         recordPointer(shown = true, centerRatioX, centerRatioY, screen)
     }
 
+    // 끌 때도 마지막 위치를 남긴다 (0,0으로 남기면 실제 위치 (0,0)과 구분되지 않는다)
     fun hidePointer() {
         val overlay = pointerOverlay ?: return
         if (!overlay.isShowing) return
         overlay.hide()
-        recordPointer(shown = false, centerRatioX = 0.0, centerRatioY = 0.0, screen = screenInfo())
+        recordPointer(shown = false, overlay.centerRatioX, overlay.centerRatioY, screenInfo())
     }
 
     private fun recordPointer(shown: Boolean, centerRatioX: Double, centerRatioY: Double, screen: ScreenInfo) {
@@ -197,9 +201,20 @@ class ProbeAccessibilityService : AccessibilityService() {
     }
 
     // 회전 등으로 화면 크기가 바뀌면 같은 비율 위치로 다시 놓는다
+    // 기록에도 한 줄 남겨, 회전 뒤 마지막 포인터 기록의 화면 크기가 실제와 맞게 한다.
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        pointerOverlay?.reposition(screenInfo())
+        val overlay = pointerOverlay ?: return
+        if (!overlay.isShowing) return
+        val screen = screenInfo()
+        overlay.reposition(screen)
+        recordPointer(shown = true, overlay.centerRatioX, overlay.centerRatioY, screen)
+    }
+
+    // 연결이 끊긴 뒤 onDestroy 전에 화면이 포인터를 부르면 무효가 된 창 권한으로 띄우게 되므로, 여기서도 참조를 지운다.
+    override fun onUnbind(intent: Intent?): Boolean {
+        if (connectedServiceReference?.get() === this) connectedServiceReference = null
+        return super.onUnbind(intent)
     }
 
     private fun startRecordFile() {
