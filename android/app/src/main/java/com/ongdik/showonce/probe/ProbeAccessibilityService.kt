@@ -5,6 +5,7 @@ import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.Display
 import android.view.WindowManager
@@ -96,6 +97,7 @@ class ProbeAccessibilityService : AccessibilityService() {
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = eventTime,
+            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
             nodes = nodes.records,
             truncated = nodes.truncated,
             contentRecorded = contentAllowed,
@@ -124,6 +126,7 @@ class ProbeAccessibilityService : AccessibilityService() {
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = event.eventTime,
+            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
             node = clickedNode,
             contentRecorded = contentAllowed,
         )

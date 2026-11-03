@@ -31,7 +31,9 @@ data class ScreenInfo(val widthPx: Int, val heightPx: Int, val rotation: Int)
  * - contentRecorded: 허용 목록에 있는 앱이라 노드 내용을 기록했는지. false면 nodes는 비어 있다 (AppAllowList)
  * - wallTimeMs: 시스템 시각(사람이 읽는 시각)
  * - eventTimeMs: 이벤트 시각(AccessibilityEvent.eventTime). SystemClock.uptimeMillis 기준이라
- *   기기가 깊은 잠자기에 든 시간은 빠진다. 녹화와 시각을 맞출 기준은 파일 저장 이슈에서 정한다.
+ *   기기가 깊은 잠자기에 든 시간은 빠진다.
+ * - elapsedRealtimeMs: 기록한 순간의 SystemClock.elapsedRealtime (잠자기 시간 포함).
+ *   세션 머리말(SessionHeader)의 같은 시계 값과 빼면, 녹화 시작부터 몇 초 뒤인지 계산할 수 있다.
  *   reason이 contentSettled이면 마지막 변경 이벤트 시각이고, 트리는 그 0.5초 뒤에 읽었다.
  */
 data class Snapshot(
@@ -40,6 +42,7 @@ data class Snapshot(
     val screen: ScreenInfo,
     val wallTimeMs: Long,
     val eventTimeMs: Long,
+    val elapsedRealtimeMs: Long,
     val nodes: List<NodeRecord>,
     val truncated: Boolean,
     val contentRecorded: Boolean,
@@ -51,6 +54,23 @@ data class ClickRecord(
     val screen: ScreenInfo,
     val wallTimeMs: Long,
     val eventTimeMs: Long,
+    val elapsedRealtimeMs: Long,
     val node: NodeRecord?,
     val contentRecorded: Boolean,
+)
+
+/**
+ * 기록 파일 첫 줄. 같은 순간에 잰 시계 세 개를 함께 남겨, 기록 줄의 시각을 서로 바꿔 계산할 수 있게 한다.
+ * - wallTimeMs: 시스템 시각 (사람이 읽는 시각, 사용자가 바꿀 수 있음)
+ * - uptimeMs: SystemClock.uptimeMillis (eventTimeMs와 같은 시계, 깊은 잠자기 시간 제외)
+ * - elapsedRealtimeMs: SystemClock.elapsedRealtime (잠자기 시간 포함, 되돌아가지 않음)
+ * 앱 버전은 어떤 구현으로 기록했는지 남기기 위해서다 (CLAUDE.md 7번).
+ */
+data class SessionHeader(
+    val formatVersion: Int,
+    val wallTimeMs: Long,
+    val uptimeMs: Long,
+    val elapsedRealtimeMs: Long,
+    val appVersionName: String?,
+    val appVersionCode: Long,
 )

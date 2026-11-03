@@ -7,17 +7,38 @@ import java.util.Locale
  * 정확해야 하는 곳은 문자열 이스케이프뿐이고, 그 부분은 테스트로 지킨다.
  * 필드가 늘거나 JSON을 다시 읽어야 하면 kotlinx.serialization으로 바꾼다.
  *
- * 스냅샷은 Logcat 한 줄 길이 제한(약 4KB) 때문에 요약 한 줄 + 노드 한 줄씩으로 나눈다.
+ * Logcat에는 한 줄 길이 제한(약 4KB) 때문에 요약 한 줄 + 노드 한 줄씩(summary, node)으로 나눠 쓰고,
+ * 기록 파일에는 스냅샷 하나를 노드 배열까지 한 줄(snapshotLine)로 쓴다. 파일 저장은 이 객체를 거친 것만 쓴다 (#17).
  */
 object SnapshotJson {
 
-    fun summary(snapshot: Snapshot): String = jsonObject(
+    fun summary(snapshot: Snapshot): String = jsonObject(*screenFields(snapshot).toTypedArray())
+
+    /** 기록 파일용: 스냅샷 하나를 노드 배열까지 한 줄로 */
+    fun snapshotLine(snapshot: Snapshot): String {
+        val nodesJson = snapshot.nodes.joinToString(",", "[", "]") { nodeRecord -> node(nodeRecord) }
+        return jsonObject(*(screenFields(snapshot) + ("nodes" to RawJson(nodesJson))).toTypedArray())
+    }
+
+    /** 기록 파일 첫 줄 */
+    fun sessionHeader(header: SessionHeader): String = jsonObject(
+        "type" to "session",
+        "formatVersion" to header.formatVersion,
+        "wallTimeMs" to header.wallTimeMs,
+        "uptimeMs" to header.uptimeMs,
+        "elapsedRealtimeMs" to header.elapsedRealtimeMs,
+        "appVersionName" to header.appVersionName,
+        "appVersionCode" to header.appVersionCode,
+    )
+
+    private fun screenFields(snapshot: Snapshot): List<Pair<String, Any?>> = listOf(
         "type" to "screen",
         "reason" to snapshot.reason,
         "package" to snapshot.packageName,
         "screen" to RawJson(screenJson(snapshot.screen)),
         "wallTimeMs" to snapshot.wallTimeMs,
         "eventTimeMs" to snapshot.eventTimeMs,
+        "elapsedRealtimeMs" to snapshot.elapsedRealtimeMs,
         "contentRecorded" to snapshot.contentRecorded,
         "nodeCount" to snapshot.nodes.size,
         "truncated" to snapshot.truncated,
@@ -29,6 +50,7 @@ object SnapshotJson {
         "screen" to RawJson(screenJson(click.screen)),
         "wallTimeMs" to click.wallTimeMs,
         "eventTimeMs" to click.eventTimeMs,
+        "elapsedRealtimeMs" to click.elapsedRealtimeMs,
         "contentRecorded" to click.contentRecorded,
         "node" to click.node?.let { RawJson(node(it)) },
     )

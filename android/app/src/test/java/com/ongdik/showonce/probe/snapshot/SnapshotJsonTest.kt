@@ -42,7 +42,7 @@ class SnapshotJsonTest {
     fun summaryContainsNodeCountAndScreenInfoButNotNodeContent() {
         val settingsSnapshot = Snapshot(
             reason = "windowChanged", packageName = "com.android.settings",
-            screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L,
+            screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L, elapsedRealtimeMs = 3L,
             nodes = listOf(nextButton), truncated = false, contentRecorded = true,
         )
         val summaryJson = SnapshotJson.summary(settingsSnapshot)
@@ -53,7 +53,37 @@ class SnapshotJsonTest {
 
     @Test
     fun writesNullNodeWhenClickSourceIsMissing() {
-        val clickWithoutSource = ClickRecord("com.app", ScreenInfo(1, 1, 0), 1L, 2L, node = null, contentRecorded = false)
+        val clickWithoutSource = ClickRecord("com.app", ScreenInfo(1, 1, 0), 1L, 2L, 3L, node = null, contentRecorded = false)
         assertTrue(SnapshotJson.click(clickWithoutSource).endsWith("\"node\":null}"))
+    }
+
+    private val twoNodeSettingsSnapshot = Snapshot(
+        reason = "windowChanged", packageName = "com.android.settings",
+        screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L, elapsedRealtimeMs = 3L,
+        nodes = listOf(nextButton, nextButton.copy(index = 4, text = "취소")), truncated = false, contentRecorded = true,
+    )
+
+    @Test
+    fun writesSnapshotWithAllNodesAsSingleFileLine() {
+        val fileLine = SnapshotJson.snapshotLine(twoNodeSettingsSnapshot)
+        assertFalse(fileLine.contains("\n"))
+        assertTrue(fileLine.startsWith("{\"type\":\"screen\""))
+        assertTrue(fileLine.contains("\"elapsedRealtimeMs\":3"))
+        assertTrue(fileLine.contains("\"nodes\":[{\"index\":3,"))
+        assertTrue(fileLine.contains("\"text\":\"취소\""))
+        assertTrue(fileLine.endsWith("}]}"))
+    }
+
+    @Test
+    fun writesSessionHeaderWithThreeClocksAndAppVersion() {
+        val header = SessionHeader(
+            formatVersion = 1, wallTimeMs = 100L, uptimeMs = 200L, elapsedRealtimeMs = 300L,
+            appVersionName = "1.0", appVersionCode = 1L,
+        )
+        assertEquals(
+            """{"type":"session","formatVersion":1,"wallTimeMs":100,"uptimeMs":200,"elapsedRealtimeMs":300,""" +
+                """"appVersionName":"1.0","appVersionCode":1}""",
+            SnapshotJson.sessionHeader(header),
+        )
     }
 }
