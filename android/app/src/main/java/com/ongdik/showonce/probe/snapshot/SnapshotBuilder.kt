@@ -12,13 +12,18 @@ object SnapshotBuilder {
 
     const val DEFAULT_MAX_NODES = 500
 
-    data class Result(val nodes: List<NodeRecord>, val truncated: Boolean)
+    /**
+     * hiddenValues: 이번에 숨긴 입력란의 원래 글자. TypedValueMasker에 넘겨 다시 표시된 곳을 가리는 데만 쓰고,
+     * 기록·로그에는 절대 넣지 않는다.
+     */
+    data class Result(val nodes: List<NodeRecord>, val truncated: Boolean, val hiddenValues: List<String>)
 
     private data class PendingNode(val node: NodeView, val depth: Int)
 
     fun collect(root: NodeView?, screen: ScreenInfo, maxNodes: Int = DEFAULT_MAX_NODES): Result {
         val collectedRecords = mutableListOf<NodeRecord>()
-        if (root == null) return Result(collectedRecords, truncated = false)
+        val hiddenValues = mutableListOf<String>()
+        if (root == null) return Result(collectedRecords, truncated = false, hiddenValues = hiddenValues)
 
         // 재귀 대신 스택: 아주 깊은 트리(웹뷰 등)에서도 스택 넘침이 없다.
         val pendingNodes = ArrayDeque<PendingNode>()
@@ -32,18 +37,18 @@ object SnapshotBuilder {
             }
             val current = pendingNodes.removeLast()
             collectedRecords += toRecord(current.node, collectedRecords.size, current.depth, screen)
+            hiddenTypedValue(current.node)?.let { hiddenValues += it }
 
             // 스택은 나중에 넣은 것이 먼저 나오므로, 자식을 뒤에서부터 넣어 첫 자식이 먼저 나오게 한다.
             for (childIndex in current.node.childCount - 1 downTo 0) {
                 current.node.child(childIndex)?.let { pendingNodes.addLast(PendingNode(it, current.depth + 1)) }
             }
         }
-        return Result(collectedRecords, truncated)
+        return Result(collectedRecords, truncated, hiddenValues)
     }
 
     fun toRecord(node: NodeView, index: Int, depth: Int, screen: ScreenInfo): NodeRecord {
-        // 입력란·비밀번호 칸의 text에는 사용자가 친 값이 들어 있을 수 있다. 글자는 버리고 표시만 남긴다.
-        val shouldHideText = node.isPassword || node.isEditable
+        val shouldHideText = shouldHideText(node)
         return NodeRecord(
             index = index,
             depth = depth,
@@ -57,6 +62,17 @@ object SnapshotBuilder {
             textHidden = shouldHideText && !node.text.isNullOrBlank(),
         )
     }
+
+    /**
+     * 입력란·비밀번호 칸의 text에는 사용자가 친 값이 들어 있을 수 있어 글자를 버린다.
+     * 단, 비어 있는 칸이 보여 주는 안내 문구(hint)는 사용자 입력이 아니고 10번 안내에 필요해서 남긴다.
+     */
+    private fun shouldHideText(node: NodeView): Boolean =
+        (node.isPassword || node.isEditable) && !node.isShowingHintText
+
+    /** 숨긴 입력란의 원래 글자 (TypedValueMasker용). 숨기지 않았거나 비어 있으면 null */
+    fun hiddenTypedValue(node: NodeView): String? =
+        if (shouldHideText(node)) node.text.trimmedOrNull() else null
 
     /**
      * 누른 노드 하나의 기록. toRecord에 더해, 글자나 설명이 한 글자뿐이면 가린다.
