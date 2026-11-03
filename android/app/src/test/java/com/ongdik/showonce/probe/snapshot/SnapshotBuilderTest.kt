@@ -123,20 +123,40 @@ class SnapshotBuilderTest {
     }
 
     @Test
-    fun knownLimitationRecordsTypedValueWhenAppEchoesItInAnotherTextView() {
-        // 알려진 한계: 입력란 안의 값은 숨기지만, 앱이 같은 값을 일반 글자로 다시 보여 주면 그 글자는 남는다.
-        // 파일 저장 이슈에서 "다시 표시된 값 가리기"를 넣으면 이 테스트를 바꾼다.
+    fun masksTypedValueEchoedInAnotherTextViewWhenHiddenValuesArePassedToMasker() {
+        // #14의 알려진 한계("No results for abc123"이 남는다)를 #16에서 TypedValueMasker로 막았다.
         val searchScreen = FakeNode(
             children = listOf(
                 FakeNode(text = "abc123", isEditable = true),
                 FakeNode(text = "No results for abc123"),
             ),
         )
-        val records = SnapshotBuilder.collect(searchScreen, screen).nodes
-        val searchField = records.single { it.editable }
-        val echoedResult = records.single { it.text?.startsWith("No results") == true }
+        val result = SnapshotBuilder.collect(searchScreen, screen)
+        val masker = TypedValueMasker()
+        masker.remember(result.hiddenValues, nowMs = 0)
+        val maskedRecords = masker.maskAll(result.nodes, nowMs = 0)
+
+        val searchField = maskedRecords.single { it.editable }
+        val echoedResult = maskedRecords.single { it.text?.startsWith("No results") == true }
         assertNull(searchField.text)
-        assertEquals("No results for abc123", echoedResult.text)
+        assertEquals("No results for •••", echoedResult.text)
+        assertTrue(echoedResult.textMasked)
+    }
+
+    @Test
+    fun returnsHiddenTypedValuesOnlyInResultNotInRecords() {
+        val result = SnapshotBuilder.collect(FakeNode(text = "abc123", isEditable = true), screen)
+        assertEquals(listOf("abc123"), result.hiddenValues)
+        assertTrue(result.nodes.none { it.text == "abc123" || it.description == "abc123" })
+    }
+
+    @Test
+    fun keepsHintTextOfEmptyEditableField() {
+        val emptySearchField = FakeNode(text = "Search settings", isEditable = true, isShowingHintText = true)
+        val record = singleRecordOf(emptySearchField)
+        assertEquals("Search settings", record.text)
+        assertFalse(record.textHidden)
+        assertTrue(SnapshotBuilder.collect(emptySearchField, screen).hiddenValues.isEmpty())
     }
 
     @Test
