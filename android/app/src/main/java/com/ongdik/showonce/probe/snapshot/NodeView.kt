@@ -16,6 +16,9 @@ interface NodeView {
     val isEditable: Boolean
     val isPassword: Boolean
 
+    /** 입력란이 비어 있어 안내 문구(hint, 예: "검색어 입력")를 text로 보여 주는 중인지. 사용자 입력이 아니다. */
+    val isShowingHintText: Boolean
+
     /** 화면 기준 픽셀 위치 */
     val boundsInScreen: PixelRect
 

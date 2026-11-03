@@ -15,6 +15,7 @@ class AccessibilityNodeView(private val node: AccessibilityNodeInfo) : NodeView 
     override val isClickable: Boolean get() = node.isClickable
     override val isEditable: Boolean get() = node.isEditable
     override val isPassword: Boolean get() = node.isPassword
+    override val isShowingHintText: Boolean get() = node.isShowingHintText
 
     override val boundsInScreen: PixelRect
         get() {

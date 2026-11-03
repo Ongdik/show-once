@@ -6,17 +6,19 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import com.ongdik.showonce.probe.snapshot.AccessibilityNodeView
+import com.ongdik.showonce.probe.snapshot.AppAllowList
 import com.ongdik.showonce.probe.snapshot.ClickRecord
+import com.ongdik.showonce.probe.snapshot.NodeRecord
 import com.ongdik.showonce.probe.snapshot.RepeatFilter
 import com.ongdik.showonce.probe.snapshot.ScreenInfo
 import com.ongdik.showonce.probe.snapshot.Snapshot
 import com.ongdik.showonce.probe.snapshot.SnapshotBuilder
 import com.ongdik.showonce.probe.snapshot.SnapshotJson
+import com.ongdik.showonce.probe.snapshot.TypedValueMasker
 
 /**
  * 다른 앱의 화면 구조와 클릭을 읽어 Logcat에 남기는 접근성 서비스.
@@ -29,17 +31,28 @@ import com.ongdik.showonce.probe.snapshot.SnapshotJson
  * - 화면 전환: 바로 한 번 + 0.5초 뒤 한 번 (막 바뀐 순간엔 트리가 덜 그려졌을 수 있다)
  * - 내용 변경: 0.5초 동안 조용해지면 (웹 페이지는 화면 전환 없이 내용만 바뀐다)
  * 같은 내용이 반복되면 RepeatFilter가 건너뛴다.
+ *
+ * 안전장치 (#16):
+ * - 허용 목록(AppAllowList)에 없는 앱은 우리 코드가 노드 내용을 읽지 않고 앱 이름과 이벤트 종류만 남긴다.
+ *   (rootInActiveWindow를 부르는 순간 안드로이드가 하위 노드를 메모리에 미리 가져올 수는 있다.
+ *    API 33+의 미리 가져오기 끄기 옵션은 실시간 안내(10번)에서 성능과 함께 검토한다.)
+ * - 입력란에서 숨긴 값이 다른 글자로 다시 보이면 TypedValueMasker가 가린다.
+ * - 로그는 디버그 빌드에서만 나간다 (ProbeLog).
  */
 class ProbeAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val repeatFilter = RepeatFilter()
+    private val typedValueMasker = TypedValueMasker()
+    // 이벤트가 연결 전에 와도 안전하게, 처음 쓸 때 만든다. packageName은 이 앱 자신의 패키지
+    private val appAllowList by lazy { AppAllowList.forProbe(ownPackageName = packageName) }
     private var pendingEventTime = 0L
     private val captureWhenSettled = Runnable { captureScreen("contentSettled", pendingEventTime) }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        Log.i(TAG, "접근성 서비스 연결됨")
+        ProbeLog.initialize(this)
+        ProbeLog.info("접근성 서비스 연결됨")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -63,9 +76,19 @@ class ProbeAccessibilityService : AccessibilityService() {
     private fun captureScreen(reason: String, eventTime: Long) {
         val root = rootInActiveWindow ?: return
         val screen = screenInfo()
-        val result = SnapshotBuilder.collect(AccessibilityNodeView(root), screen)
         val screenPackageName = root.packageName?.toString()
-        if (!repeatFilter.isNew(screenPackageName, result.nodes)) return
+        val contentAllowed = appAllowList.isContentAllowed(screenPackageName)
+
+        // 허용 목록 밖 앱은 노드 내용을 읽지 않는다 (읽고 버리는 게 아니라). 앱 이름만 쓴다.
+        val nodes = if (contentAllowed) {
+            val result = SnapshotBuilder.collect(AccessibilityNodeView(root), screen)
+            val nowMs = System.currentTimeMillis()
+            typedValueMasker.remember(result.hiddenValues, nowMs)
+            CollectedNodes(typedValueMasker.maskAll(result.nodes, nowMs), result.truncated)
+        } else {
+            CollectedNodes(emptyList(), truncated = false)
+        }
+        if (!repeatFilter.isNew(screenPackageName, nodes.records)) return
 
         val snapshot = Snapshot(
             reason = reason,
@@ -73,27 +96,38 @@ class ProbeAccessibilityService : AccessibilityService() {
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = eventTime,
-            nodes = result.nodes,
-            truncated = result.truncated,
+            nodes = nodes.records,
+            truncated = nodes.truncated,
+            contentRecorded = contentAllowed,
         )
         // Logcat 한 줄 길이 제한 때문에 요약 한 줄 + 노드 한 줄씩
-        Log.d(TAG, "screen " + SnapshotJson.summary(snapshot))
-        snapshot.nodes.forEach { nodeRecord -> Log.d(TAG, "node " + SnapshotJson.node(nodeRecord)) }
+        ProbeLog.debug("screen " + SnapshotJson.summary(snapshot))
+        snapshot.nodes.forEach { nodeRecord -> ProbeLog.debug("node " + SnapshotJson.node(nodeRecord)) }
     }
 
     private fun logClick(event: AccessibilityEvent) {
         val screen = screenInfo()
-        val clickedNode = event.source?.let { source ->
-            SnapshotBuilder.toClickedNodeRecord(AccessibilityNodeView(source), screen)
+        val clickPackageName = event.packageName?.toString()
+        val contentAllowed = appAllowList.isContentAllowed(clickPackageName)
+        val clickedNode = if (contentAllowed) {
+            event.source?.let { source ->
+                val nodeView = AccessibilityNodeView(source)
+                val nowMs = System.currentTimeMillis()
+                SnapshotBuilder.hiddenTypedValue(nodeView)?.let { typedValueMasker.remember(listOf(it), nowMs) }
+                typedValueMasker.mask(SnapshotBuilder.toClickedNodeRecord(nodeView, screen), nowMs)
+            }
+        } else {
+            null
         }
         val click = ClickRecord(
-            packageName = event.packageName?.toString(),
+            packageName = clickPackageName,
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = event.eventTime,
             node = clickedNode,
+            contentRecorded = contentAllowed,
         )
-        Log.d(TAG, "click " + SnapshotJson.click(click))
+        ProbeLog.debug("click " + SnapshotJson.click(click))
     }
 
     // 노드 위치(getBoundsInScreen)와 같은 기준인 화면 전체 크기
@@ -119,12 +153,13 @@ class ProbeAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacks(captureWhenSettled)
-        Log.i(TAG, "접근성 서비스 종료됨")
+        ProbeLog.info("접근성 서비스 종료됨")
         super.onDestroy()
     }
 
+    private data class CollectedNodes(val records: List<NodeRecord>, val truncated: Boolean)
+
     companion object {
-        const val TAG = "ShowOnceProbe"
         private const val SETTLE_DELAY_MS = 500L
     }
 }

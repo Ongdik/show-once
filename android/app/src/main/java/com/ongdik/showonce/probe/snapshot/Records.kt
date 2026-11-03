@@ -17,6 +17,8 @@ data class NodeRecord(
     val clickable: Boolean,
     val editable: Boolean,
     val textHidden: Boolean,
+    /** 다시 표시된 입력값을 •••로 가렸는지 (TypedValueMasker) */
+    val textMasked: Boolean = false,
 )
 
 /** 화면 크기와 회전 방향. 비율 좌표를 다시 픽셀로 돌리거나 가로·세로를 구분할 때 필요하다. */
@@ -24,6 +26,7 @@ data class ScreenInfo(val widthPx: Int, val heightPx: Int, val rotation: Int)
 
 /**
  * 한 시점의 화면 전체 기록.
+ * - contentRecorded: 허용 목록에 있는 앱이라 노드 내용을 기록했는지. false면 nodes는 비어 있다 (AppAllowList)
  * - wallTimeMs: 시스템 시각(사람이 읽는 시각)
  * - eventTimeMs: 이벤트 시각(AccessibilityEvent.eventTime). SystemClock.uptimeMillis 기준이라
  *   기기가 깊은 잠자기에 든 시간은 빠진다. 녹화와 시각을 맞출 기준은 파일 저장 이슈에서 정한다.
@@ -37,6 +40,7 @@ data class Snapshot(
     val eventTimeMs: Long,
     val nodes: List<NodeRecord>,
     val truncated: Boolean,
+    val contentRecorded: Boolean,
 )
 
 /** 누른 노드 하나의 기록 */
@@ -46,4 +50,5 @@ data class ClickRecord(
     val wallTimeMs: Long,
     val eventTimeMs: Long,
     val node: NodeRecord?,
+    val contentRecorded: Boolean,
 )
