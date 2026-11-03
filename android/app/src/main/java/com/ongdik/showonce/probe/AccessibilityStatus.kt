@@ -13,13 +13,14 @@ object AccessibilityStatus {
 
     fun isEnabled(enabledServices: String?, packageName: String, className: String): Boolean {
         if (enabledServices.isNullOrBlank()) return false
-        return enabledServices.split(':').any { entry ->
-            val parts = entry.trim().split('/')
-            if (parts.size != 2) return@any false
-            val (pkg, cls) = parts
-            val fullClass = if (cls.startsWith('.')) pkg + cls else cls
-            pkg.equals(packageName, ignoreCase = true) &&
-                fullClass.equals(className, ignoreCase = true)
+        return enabledServices.split(':').any { serviceEntry ->
+            val entryParts = serviceEntry.trim().split('/')
+            if (entryParts.size != 2) return@any false
+            val (entryPackage, entryClass) = entryParts
+            val entryFullClassName =
+                if (entryClass.startsWith('.')) entryPackage + entryClass else entryClass
+            entryPackage.equals(packageName, ignoreCase = true) &&
+                entryFullClassName.equals(className, ignoreCase = true)
         }
     }
 }
