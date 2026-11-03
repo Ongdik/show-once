@@ -84,7 +84,7 @@ class ProbeAccessibilityService : AccessibilityService() {
     private fun logClick(event: AccessibilityEvent) {
         val screen = screenInfo()
         val clickedNode = event.source?.let { source ->
-            SnapshotBuilder.toRecord(AccessibilityNodeView(source), index = 0, depth = 0, screen = screen)
+            SnapshotBuilder.toClickedNodeRecord(AccessibilityNodeView(source), screen)
         }
         val click = ClickRecord(
             packageName = event.packageName?.toString(),

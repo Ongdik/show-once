@@ -58,6 +58,22 @@ object SnapshotBuilder {
         )
     }
 
+    /**
+     * 누른 노드 하나의 기록. toRecord에 더해, 글자나 설명이 한 글자뿐이면 가린다.
+     *
+     * 은행 앱의 보안 키패드는 숫자 하나하나가 입력란이 아니라 누를 수 있는 버튼이다.
+     * 누를 때마다 "3", "7"을 남기면 이어 붙여 비밀번호가 된다. 한 글자 버튼은 글자를 버리고 표시만 남긴다.
+     * ("확인", "다음" 같은 일반 버튼은 두 글자 이상이라 그대로 남는다.)
+     */
+    fun toClickedNodeRecord(node: NodeView, screen: ScreenInfo): NodeRecord {
+        val record = toRecord(node, index = 0, depth = 0, screen = screen)
+        val looksLikeKeypadKey = record.text.isSingleCharacter() || record.description.isSingleCharacter()
+        if (!looksLikeKeypadKey) return record
+        return record.copy(text = null, description = null, textHidden = true)
+    }
+
+    private fun String?.isSingleCharacter(): Boolean = this != null && this.codePointCount(0, this.length) == 1
+
     /** 픽셀 → 0~1 비율. 화면 밖으로 일부 나간 노드도 있어서 0~1로 자른다. 소수 4자리(약 0.2px 단위). */
     fun toRatio(pixelRect: PixelRect, screen: ScreenInfo): RatioRect = RatioRect(
         left = pixelToRatio(pixelRect.left, screen.widthPx),
