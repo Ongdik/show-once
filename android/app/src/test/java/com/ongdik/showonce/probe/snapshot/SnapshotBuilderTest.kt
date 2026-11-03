@@ -151,6 +151,12 @@ class SnapshotBuilderTest {
     }
 
     @Test
+    fun doesNotPrintHiddenTypedValuesWhenResultIsLogged() {
+        val result = SnapshotBuilder.collect(FakeNode(text = "abc123", isEditable = true), screen)
+        assertFalse(result.toString().contains("abc123"))
+    }
+
+    @Test
     fun keepsHintTextOfEmptyEditableField() {
         val emptySearchField = FakeNode(text = "Search settings", isEditable = true, isShowingHintText = true)
         val record = singleRecordOf(emptySearchField)

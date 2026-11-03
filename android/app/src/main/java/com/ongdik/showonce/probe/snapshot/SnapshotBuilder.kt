@@ -16,7 +16,11 @@ object SnapshotBuilder {
      * hiddenValues: 이번에 숨긴 입력란의 원래 글자. TypedValueMasker에 넘겨 다시 표시된 곳을 가리는 데만 쓰고,
      * 기록·로그에는 절대 넣지 않는다.
      */
-    data class Result(val nodes: List<NodeRecord>, val truncated: Boolean, val hiddenValues: List<String>)
+    data class Result(val nodes: List<NodeRecord>, val truncated: Boolean, val hiddenValues: List<String>) {
+        // data class 기본 toString은 hiddenValues를 그대로 출력한다. 실수로 로그에 찍혀도 새지 않게 개수만 보인다.
+        override fun toString(): String =
+            "Result(nodes=${nodes.size}, truncated=$truncated, hiddenValues=${hiddenValues.size} hidden)"
+    }
 
     private data class PendingNode(val node: NodeView, val depth: Int)
 
