@@ -10,12 +10,20 @@ import android.util.DisplayMetrics
 import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import com.ongdik.showonce.probe.record.RecordFileStore
 import com.ongdik.showonce.probe.snapshot.AccessibilityNodeView
 import com.ongdik.showonce.probe.snapshot.AppAllowList
 import com.ongdik.showonce.probe.snapshot.ClickRecord
 import com.ongdik.showonce.probe.snapshot.NodeRecord
 import com.ongdik.showonce.probe.snapshot.RepeatFilter
 import com.ongdik.showonce.probe.snapshot.ScreenInfo
+import com.ongdik.showonce.probe.snapshot.SessionHeader
 import com.ongdik.showonce.probe.snapshot.Snapshot
 import com.ongdik.showonce.probe.snapshot.SnapshotBuilder
 import com.ongdik.showonce.probe.snapshot.SnapshotJson
@@ -39,6 +47,9 @@ import com.ongdik.showonce.probe.snapshot.TypedValueMasker
  *    API 33+의 미리 가져오기 끄기 옵션은 실시간 안내(10번)에서 성능과 함께 검토한다.)
  * - 입력란에서 숨긴 값이 다른 글자로 다시 보이면 TypedValueMasker가 가린다.
  * - 로그는 디버그 빌드에서만 나간다 (ProbeLog).
+ *
+ * 기록 파일 (#17): 같은 기록을 앱 내부 저장소(files/records/)에도 한 줄 JSON으로 쌓는다.
+ * USB 디버깅을 끈 채 은행 앱을 확인할 때도 기록이 남게 하기 위해서다. 파일 쓰기는 별도 스레드 하나에서 한다.
  */
 class ProbeAccessibilityService : AccessibilityService() {
 
@@ -48,11 +59,14 @@ class ProbeAccessibilityService : AccessibilityService() {
     // 이벤트가 연결 전에 와도 안전하게, 처음 쓸 때 만든다. packageName은 이 앱 자신의 패키지
     private val appAllowList by lazy { AppAllowList.forProbe(ownPackageName = packageName) }
     private var pendingEventTime = 0L
+    private var recordFileStore: RecordFileStore? = null
+    private val recordWriter: ExecutorService = Executors.newSingleThreadExecutor()
     private val captureWhenSettled = Runnable { captureScreen("contentSettled", pendingEventTime) }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         ProbeLog.initialize(this)
+        startRecordFile()
         ProbeLog.info("접근성 서비스 연결됨")
     }
 
@@ -105,6 +119,7 @@ class ProbeAccessibilityService : AccessibilityService() {
         // Logcat 한 줄 길이 제한 때문에 요약 한 줄 + 노드 한 줄씩
         ProbeLog.debug("screen " + SnapshotJson.summary(snapshot))
         snapshot.nodes.forEach { nodeRecord -> ProbeLog.debug("node " + SnapshotJson.node(nodeRecord)) }
+        writeRecordLine(SnapshotJson.snapshotLine(snapshot))
     }
 
     private fun logClick(event: AccessibilityEvent) {
@@ -130,7 +145,47 @@ class ProbeAccessibilityService : AccessibilityService() {
             node = clickedNode,
             contentRecorded = contentAllowed,
         )
-        ProbeLog.debug("click " + SnapshotJson.click(click))
+        val clickLine = SnapshotJson.click(click)
+        ProbeLog.debug("click $clickLine")
+        writeRecordLine(clickLine)
+    }
+
+    private fun startRecordFile() {
+        val fileNameFormat = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.ROOT)
+        val store = RecordFileStore(
+            recordsDirectory = recordsDirectory(this),
+            nextFileName = { "records-${fileNameFormat.format(Date())}${RecordFileStore.FILE_EXTENSION}" },
+        )
+        val headerLine = SnapshotJson.sessionHeader(sessionHeader())
+        recordWriter.execute { store.startSession(headerLine) }
+        recordFileStore = store
+    }
+
+    // 같은 순간의 시계 세 개를 머리말에 남긴다 (세 줄이 몇 ms 안에 연달아 읽힌다)
+    private fun sessionHeader(): SessionHeader {
+        // 플래그 없는 getPackageInfo(이름, 0)는 API 33에서 새 형태가 생겼지만, minSdk 26에서도 되는 이 형태를 쓴다.
+        @Suppress("DEPRECATION")
+        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            packageInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.versionCode.toLong()
+        }
+        return SessionHeader(
+            formatVersion = RECORD_FORMAT_VERSION,
+            wallTimeMs = System.currentTimeMillis(),
+            uptimeMs = SystemClock.uptimeMillis(),
+            elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            appVersionName = packageInfo.versionName,
+            appVersionCode = versionCode,
+        )
+    }
+
+    // 줄은 여기서(이벤트 스레드) 다 만들어 두고, 파일 쓰기만 별도 스레드에 맡긴다.
+    private fun writeRecordLine(line: String) {
+        val store = recordFileStore ?: return
+        recordWriter.execute { store.append(line) }
     }
 
     // 노드 위치(getBoundsInScreen)와 같은 기준인 화면 전체 크기
@@ -156,6 +211,7 @@ class ProbeAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacks(captureWhenSettled)
+        recordWriter.shutdown() // 이미 맡긴 쓰기는 끝까지 한다
         ProbeLog.info("접근성 서비스 종료됨")
         super.onDestroy()
     }
@@ -164,5 +220,9 @@ class ProbeAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val SETTLE_DELAY_MS = 500L
+        const val RECORD_FORMAT_VERSION = 1
+
+        /** 기록 파일 위치. 앱 내부 저장소라 다른 앱이나 USB 파일 탐색기로 읽을 수 없다 */
+        fun recordsDirectory(context: android.content.Context): File = File(context.filesDir, "records")
     }
 }
