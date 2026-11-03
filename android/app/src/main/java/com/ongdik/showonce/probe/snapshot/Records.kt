@@ -33,7 +33,8 @@ data class ScreenInfo(val widthPx: Int, val heightPx: Int, val rotation: Int)
  * - eventTimeMs: 이벤트 시각(AccessibilityEvent.eventTime). SystemClock.uptimeMillis 기준이라
  *   기기가 깊은 잠자기에 든 시간은 빠진다.
  * - elapsedRealtimeMs: 기록한 순간의 SystemClock.elapsedRealtime (잠자기 시간 포함).
- *   세션 머리말(SessionHeader)의 같은 시계 값과 빼면, 녹화 시작부터 몇 초 뒤인지 계산할 수 있다.
+ *   세션 머리말(SessionHeader)의 같은 시계 값과 빼면 세션 시작(서비스 연결)부터 몇 초 뒤인지 계산할 수 있다.
+ *   화면 녹화와 시각을 맞추는 방법은 3번(실험용 녹화)에서 정한다. 녹화 시작 시각은 여기에 기록되지 않는다.
  *   reason이 contentSettled이면 마지막 변경 이벤트 시각이고, 트리는 그 0.5초 뒤에 읽었다.
  */
 data class Snapshot(
@@ -64,7 +65,8 @@ data class ClickRecord(
  * - wallTimeMs: 시스템 시각 (사람이 읽는 시각, 사용자가 바꿀 수 있음)
  * - uptimeMs: SystemClock.uptimeMillis (eventTimeMs와 같은 시계, 깊은 잠자기 시간 제외)
  * - elapsedRealtimeMs: SystemClock.elapsedRealtime (잠자기 시간 포함, 되돌아가지 않음)
- * 앱 버전은 어떤 구현으로 기록했는지 남기기 위해서다 (CLAUDE.md 7번).
+ * 앱 버전과 설정값(허용 목록, 대기 시간, 노드 상한, 입력값 기억 시간)은
+ * 어떤 구현·설정으로 기록했는지 파일 하나만 보고 알 수 있게 남긴다 (CLAUDE.md 7번).
  */
 data class SessionHeader(
     val formatVersion: Int,
@@ -73,4 +75,8 @@ data class SessionHeader(
     val elapsedRealtimeMs: Long,
     val appVersionName: String?,
     val appVersionCode: Long,
+    val allowedPackages: List<String>,
+    val settleDelayMs: Long,
+    val maxNodesPerSnapshot: Int,
+    val typedValueRememberMs: Long,
 )

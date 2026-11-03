@@ -75,14 +75,18 @@ class SnapshotJsonTest {
     }
 
     @Test
-    fun writesSessionHeaderWithThreeClocksAndAppVersion() {
+    fun writesSessionHeaderWithThreeClocksAppVersionAndSettings() {
         val header = SessionHeader(
             formatVersion = 1, wallTimeMs = 100L, uptimeMs = 200L, elapsedRealtimeMs = 300L,
             appVersionName = "1.0", appVersionCode = 1L,
+            allowedPackages = listOf("io.metamask", "com.android.settings"),
+            settleDelayMs = 500L, maxNodesPerSnapshot = 500, typedValueRememberMs = 60_000L,
         )
         assertEquals(
             """{"type":"session","formatVersion":1,"wallTimeMs":100,"uptimeMs":200,"elapsedRealtimeMs":300,""" +
-                """"appVersionName":"1.0","appVersionCode":1}""",
+                """"appVersionName":"1.0","appVersionCode":1,""" +
+                """"allowedPackages":["com.android.settings","io.metamask"],""" +
+                """"settleDelayMs":500,"maxNodesPerSnapshot":500,"typedValueRememberMs":60000}""",
             SnapshotJson.sessionHeader(header),
         )
     }

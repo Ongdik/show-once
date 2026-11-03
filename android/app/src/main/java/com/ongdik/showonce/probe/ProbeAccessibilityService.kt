@@ -182,6 +182,10 @@ class ProbeAccessibilityService : AccessibilityService() {
             elapsedRealtimeMs = SystemClock.elapsedRealtime(),
             appVersionName = packageInfo.versionName,
             appVersionCode = versionCode,
+            allowedPackages = appAllowList.allowedPackages.toList(),
+            settleDelayMs = SETTLE_DELAY_MS,
+            maxNodesPerSnapshot = SnapshotBuilder.DEFAULT_MAX_NODES,
+            typedValueRememberMs = TypedValueMasker.REMEMBER_DURATION_MS,
         )
     }
 

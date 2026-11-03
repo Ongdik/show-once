@@ -29,6 +29,10 @@ object SnapshotJson {
         "elapsedRealtimeMs" to header.elapsedRealtimeMs,
         "appVersionName" to header.appVersionName,
         "appVersionCode" to header.appVersionCode,
+        "allowedPackages" to RawJson(header.allowedPackages.sorted().joinToString(",", "[", "]") { quote(it) }),
+        "settleDelayMs" to header.settleDelayMs,
+        "maxNodesPerSnapshot" to header.maxNodesPerSnapshot,
+        "typedValueRememberMs" to header.typedValueRememberMs,
     )
 
     private fun screenFields(snapshot: Snapshot): List<Pair<String, Any?>> = listOf(
