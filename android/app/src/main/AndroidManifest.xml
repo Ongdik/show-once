@@ -23,6 +23,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+            접근성 서비스 등록.
+            - permission BIND_ACCESSIBILITY_SERVICE: 우리가 받는 권한이 아니라 "시스템만 이 서비스에 연결할 수 있다"는 자물쇠.
+              이게 없으면 다른 앱이 흉내 내 연결할 수 있어서, 안드로이드가 설정 목록에 띄워 주지 않는다.
+            - exported=false: 다른 앱이 직접 실행할 수 없게 한다 (시스템은 위 권한으로 연결한다).
+            - intent-filter: "나는 접근성 서비스다"라고 시스템에 알린다.
+            - meta-data: 무엇을 받고 싶은지 적은 설정 파일 위치.
+        -->
+        <service
+            android:name=".ProbeAccessibilityService"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
     </application>
 
 </manifest>
