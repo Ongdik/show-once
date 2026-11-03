@@ -56,8 +56,7 @@ class ProbeAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private val repeatFilter = RepeatFilter()
     private val typedValueMasker = TypedValueMasker()
-    // 이벤트가 연결 전에 와도 안전하게, 처음 쓸 때 만든다. packageName은 이 앱 자신의 패키지
-    private val appAllowList by lazy { AppAllowList.forProbe(ownPackageName = packageName) }
+    private val appAllowList = AppAllowList.forProbe()
     private var pendingEventTime = 0L
     private var recordFileStore: RecordFileStore? = null
     private val recordWriter: ExecutorService = Executors.newSingleThreadExecutor()
@@ -71,6 +70,9 @@ class ProbeAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        // 이 앱 자신의 화면은 시험 대상이 아니라서 아무것도 남기지 않는다.
+        // (남기면 "기록 모두 지우기" 직후 이 앱 화면이 바로 새 파일로 기록된다)
+        if (event.packageName?.toString() == packageName) return
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 captureScreen("windowChanged", event.eventTime)
@@ -92,6 +94,7 @@ class ProbeAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         val screen = screenInfo()
         val screenPackageName = root.packageName?.toString()
+        if (screenPackageName == packageName) return // 0.5초 뒤 찍는 사이 이 앱으로 돌아왔을 수 있다
         val contentAllowed = appAllowList.isContentAllowed(screenPackageName)
 
         // 허용 목록 밖 앱은 노드 내용을 읽지 않는다 (읽고 버리는 게 아니라). 앱 이름만 쓴다.

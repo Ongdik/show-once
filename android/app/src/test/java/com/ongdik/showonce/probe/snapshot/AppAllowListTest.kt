@@ -6,13 +6,17 @@ import org.junit.Test
 
 class AppAllowListTest {
 
-    private val probeAllowList = AppAllowList.forProbe(ownPackageName = "com.ongdik.showonce.probe")
+    private val probeAllowList = AppAllowList.forProbe()
 
     @Test
     fun allowsContentOfListedApps() {
         assertTrue(probeAllowList.isContentAllowed("com.android.settings"))
         assertTrue(probeAllowList.isContentAllowed("io.metamask"))
-        assertTrue(probeAllowList.isContentAllowed("com.ongdik.showonce.probe"))
+    }
+
+    @Test
+    fun doesNotListProbeAppItself() {
+        assertFalse(probeAllowList.isContentAllowed("com.ongdik.showonce.probe"))
     }
 
     @Test

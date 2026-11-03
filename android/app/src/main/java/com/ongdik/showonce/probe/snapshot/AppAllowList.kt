@@ -8,16 +8,18 @@ package com.ongdik.showonce.probe.snapshot
  *
  * 위험 ①(은행 앱이 막는가)에는 "은행 앱이 떴다/꺼졌다"만 필요하므로, 은행 앱은 목록에 넣지 않는다.
  */
-class AppAllowList(private val allowedPackages: Set<String>) {
+class AppAllowList(val allowedPackages: Set<String>) {
 
     fun isContentAllowed(packageName: String?): Boolean =
         packageName != null && packageName in allowedPackages
 
     companion object {
-        /** 시험 앱에서 내용을 볼 앱들. 패키지 이름은 실제 기기에서 `adb shell pm list packages`로 확인한다. */
-        fun forProbe(ownPackageName: String) = AppAllowList(
+        /**
+         * 시험 앱에서 내용을 볼 앱들. 패키지 이름은 실제 기기에서 `adb shell pm list packages`로 확인한다.
+         * 이 앱 자신은 넣지 않는다: 시험 대상이 아니고, 넣으면 "기록 모두 지우기" 직후 이 앱 화면이 바로 다시 기록된다 (#17).
+         */
+        fun forProbe() = AppAllowList(
             setOf(
-                ownPackageName,
                 "com.android.settings", // 설정
                 "com.google.android.settings.intelligence", // 설정 검색 화면
                 "com.android.chrome", // 크롬 (웹 화면 접근성 확인)
