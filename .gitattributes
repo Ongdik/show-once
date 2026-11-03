@@ -2,3 +2,7 @@
 * text=auto eol=lf
 *.png binary
 *.jpg binary
+# Windows 배치 파일(gradlew.bat)은 CRLF여야 실행된다
+*.bat text eol=crlf
+# Gradle 래퍼 jar는 바이너리
+*.jar binary
