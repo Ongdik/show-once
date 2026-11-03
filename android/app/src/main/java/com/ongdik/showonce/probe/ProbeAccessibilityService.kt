@@ -33,7 +33,9 @@ import com.ongdik.showonce.probe.snapshot.TypedValueMasker
  * 같은 내용이 반복되면 RepeatFilter가 건너뛴다.
  *
  * 안전장치 (#16):
- * - 허용 목록(AppAllowList)에 없는 앱은 노드를 읽지 않고 앱 이름과 이벤트 종류만 남긴다.
+ * - 허용 목록(AppAllowList)에 없는 앱은 우리 코드가 노드 내용을 읽지 않고 앱 이름과 이벤트 종류만 남긴다.
+ *   (rootInActiveWindow를 부르는 순간 안드로이드가 하위 노드를 메모리에 미리 가져올 수는 있다.
+ *    API 33+의 미리 가져오기 끄기 옵션은 실시간 안내(10번)에서 성능과 함께 검토한다.)
  * - 입력란에서 숨긴 값이 다른 글자로 다시 보이면 TypedValueMasker가 가린다.
  * - 로그는 디버그 빌드에서만 나간다 (ProbeLog).
  */
@@ -77,7 +79,7 @@ class ProbeAccessibilityService : AccessibilityService() {
         val screenPackageName = root.packageName?.toString()
         val contentAllowed = appAllowList.isContentAllowed(screenPackageName)
 
-        // 허용 목록 밖 앱은 노드를 아예 읽지 않는다 (읽고 버리는 게 아니라).
+        // 허용 목록 밖 앱은 노드 내용을 읽지 않는다 (읽고 버리는 게 아니라). 앱 이름만 쓴다.
         val nodes = if (contentAllowed) {
             val result = SnapshotBuilder.collect(AccessibilityNodeView(root), screen)
             val nowMs = System.currentTimeMillis()
