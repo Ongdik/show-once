@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">ShowOnce Probe</string>
+
+    <!-- 접근성 설정 화면에서 사용자가 읽는 설명 -->
+    <string name="accessibility_service_description">화면이 바뀔 때 버튼 글자와 위치, 누른 곳을 읽어서 이 폰 안에만 기록합니다. 다음에 누를 곳을 안내하는 기능을 시험하기 위한 앱입니다.</string>
 </resources>
