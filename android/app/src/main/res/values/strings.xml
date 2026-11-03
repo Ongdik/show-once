@@ -9,4 +9,11 @@
     <string name="status_disabled">접근성 서비스: 꺼짐</string>
     <string name="open_accessibility_settings">접근성 설정 열기</string>
     <string name="settings_guide">설정에서 \"설치된 앱\"(또는 \"다운로드한 앱\") → ShowOnce Probe를 켜고 돌아오세요.</string>
+
+    <!-- 기록 파일 -->
+    <string name="record_summary">기록 파일 %1$d개, 총 %2$s</string>
+    <string name="delete_all_records">기록 모두 지우기</string>
+    <string name="delete_all_records_confirm">이 폰에 쌓인 화면 기록 파일을 모두 지웁니다. 되돌릴 수 없습니다.</string>
+    <string name="delete">지우기</string>
+    <string name="cancel">취소</string>
 </resources>
