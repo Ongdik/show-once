@@ -6,41 +6,43 @@ import org.junit.Test
 
 class AccessibilityStatusTest {
 
-    private val pkg = "com.ongdik.showonce.probe"
-    private val cls = "com.ongdik.showonce.probe.ProbeAccessibilityService"
+    private val probePackage = "com.ongdik.showonce.probe"
+    private val probeServiceClass = "com.ongdik.showonce.probe.ProbeAccessibilityService"
+    private val talkBackService = "com.google.android.marvin.talkback/.TalkBackService"
+
+    private fun isProbeEnabled(enabledServices: String?) =
+        AccessibilityStatus.isEnabled(enabledServices, probePackage, probeServiceClass)
 
     @Test
-    fun 목록이_비었으면_꺼짐() {
-        assertFalse(AccessibilityStatus.isEnabled(null, pkg, cls))
-        assertFalse(AccessibilityStatus.isEnabled("", pkg, cls))
+    fun returnsDisabledWhenEnabledServiceListIsNullOrEmpty() {
+        assertFalse(isProbeEnabled(null))
+        assertFalse(isProbeEnabled(""))
     }
 
     @Test
-    fun 클래스_전체_이름으로_저장되면_켜짐() {
-        assertTrue(AccessibilityStatus.isEnabled("$pkg/$cls", pkg, cls))
+    fun returnsEnabledWhenServiceIsStoredWithFullClassName() {
+        assertTrue(isProbeEnabled("$probePackage/$probeServiceClass"))
     }
 
     @Test
-    fun 클래스를_줄여서_저장해도_켜짐() {
-        assertTrue(AccessibilityStatus.isEnabled("$pkg/.ProbeAccessibilityService", pkg, cls))
+    fun returnsEnabledWhenServiceIsStoredWithShortClassName() {
+        assertTrue(isProbeEnabled("$probePackage/.ProbeAccessibilityService"))
     }
 
     @Test
-    fun 다른_서비스와_함께_있어도_찾는다() {
-        val list = "com.google.android.marvin.talkback/.TalkBackService:$pkg/$cls"
-        assertTrue(AccessibilityStatus.isEnabled(list, pkg, cls))
+    fun findsProbeServiceAmongOtherEnabledServices() {
+        assertTrue(isProbeEnabled("$talkBackService:$probePackage/$probeServiceClass"))
     }
 
     @Test
-    fun 다른_앱의_서비스만_있으면_꺼짐() {
-        val list = "com.google.android.marvin.talkback/.TalkBackService"
-        assertFalse(AccessibilityStatus.isEnabled(list, pkg, cls))
+    fun returnsDisabledWhenOnlyOtherAppServicesAreEnabled() {
+        assertFalse(isProbeEnabled(talkBackService))
     }
 
     @Test
-    fun 패키지_이름이_앞부분만_같으면_꺼짐() {
+    fun returnsDisabledWhenOnlyPackagePrefixMatches() {
         // 10번의 실제 앱(com.ongdik.showonce)과 헷갈리지 않아야 한다
-        val list = "com.ongdik.showonce/com.ongdik.showonce.ProbeAccessibilityService"
-        assertFalse(AccessibilityStatus.isEnabled(list, pkg, cls))
+        val realAppService = "com.ongdik.showonce/com.ongdik.showonce.ProbeAccessibilityService"
+        assertFalse(isProbeEnabled(realAppService))
     }
 }
