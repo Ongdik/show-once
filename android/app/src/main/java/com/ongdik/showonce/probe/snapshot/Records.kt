@@ -25,7 +25,9 @@ data class ScreenInfo(val widthPx: Int, val heightPx: Int, val rotation: Int)
 /**
  * 한 시점의 화면 전체 기록.
  * - wallTimeMs: 시스템 시각(사람이 읽는 시각)
- * - eventTimeMs: 이벤트 시각(AccessibilityEvent.eventTime, 기기 부팅 후 경과 ms)
+ * - eventTimeMs: 이벤트 시각(AccessibilityEvent.eventTime). SystemClock.uptimeMillis 기준이라
+ *   기기가 깊은 잠자기에 든 시간은 빠진다. 녹화와 시각을 맞출 기준은 파일 저장 이슈에서 정한다.
+ *   reason이 contentSettled이면 마지막 변경 이벤트 시각이고, 트리는 그 0.5초 뒤에 읽었다.
  */
 data class Snapshot(
     val reason: String,
