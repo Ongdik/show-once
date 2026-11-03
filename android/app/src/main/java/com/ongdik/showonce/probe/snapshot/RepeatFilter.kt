@@ -9,19 +9,20 @@ package com.ongdik.showonce.probe.snapshot
  */
 class RepeatFilter {
 
-    private var lastSignature: Int? = null
+    private var lastScreenSignature: Int? = null
 
     /** 새 화면이면 true(기록할 것), 직전과 같으면 false */
     fun isNew(packageName: String?, nodes: List<NodeRecord>): Boolean {
-        val sig = signature(packageName, nodes)
-        if (sig == lastSignature) return false
-        lastSignature = sig
+        val screenSignature = signature(packageName, nodes)
+        if (screenSignature == lastScreenSignature) return false
+        lastScreenSignature = screenSignature
         return true
     }
 
     companion object {
-        fun signature(packageName: String?, nodes: List<NodeRecord>): Int =
-            (listOf(packageName) + nodes.map { "${it.text}|${it.description}|${it.viewId}|${it.bounds}" })
-                .hashCode()
+        fun signature(packageName: String?, nodes: List<NodeRecord>): Int {
+            val nodeSummaries = nodes.map { "${it.text}|${it.description}|${it.viewId}|${it.bounds}" }
+            return (listOf(packageName) + nodeSummaries).hashCode()
+        }
     }
 }

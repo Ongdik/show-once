@@ -64,12 +64,12 @@ class ProbeAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
         val screen = screenInfo()
         val result = SnapshotBuilder.collect(AccessibilityNodeView(root), screen)
-        val pkg = root.packageName?.toString()
-        if (!repeatFilter.isNew(pkg, result.nodes)) return
+        val screenPackageName = root.packageName?.toString()
+        if (!repeatFilter.isNew(screenPackageName, result.nodes)) return
 
         val snapshot = Snapshot(
             reason = reason,
-            packageName = pkg,
+            packageName = screenPackageName,
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = eventTime,
@@ -78,37 +78,39 @@ class ProbeAccessibilityService : AccessibilityService() {
         )
         // Logcat 한 줄 길이 제한 때문에 요약 한 줄 + 노드 한 줄씩
         Log.d(TAG, "screen " + SnapshotJson.summary(snapshot))
-        snapshot.nodes.forEach { Log.d(TAG, "node " + SnapshotJson.node(it)) }
+        snapshot.nodes.forEach { nodeRecord -> Log.d(TAG, "node " + SnapshotJson.node(nodeRecord)) }
     }
 
     private fun logClick(event: AccessibilityEvent) {
         val screen = screenInfo()
-        val node = event.source?.let { SnapshotBuilder.toRecord(AccessibilityNodeView(it), 0, 0, screen) }
+        val clickedNode = event.source?.let { source ->
+            SnapshotBuilder.toRecord(AccessibilityNodeView(source), index = 0, depth = 0, screen = screen)
+        }
         val click = ClickRecord(
             packageName = event.packageName?.toString(),
             screen = screen,
             wallTimeMs = System.currentTimeMillis(),
             eventTimeMs = event.eventTime,
-            node = node,
+            node = clickedNode,
         )
         Log.d(TAG, "click " + SnapshotJson.click(click))
     }
 
     // 노드 위치(getBoundsInScreen)와 같은 기준인 화면 전체 크기
     private fun screenInfo(): ScreenInfo {
-        val wm = getSystemService(WindowManager::class.java)
-        val (w, h) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val b = wm.maximumWindowMetrics.bounds
-            b.width() to b.height()
+        val windowManager = getSystemService(WindowManager::class.java)
+        val (screenWidthPx, screenHeightPx) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val displayBounds = windowManager.maximumWindowMetrics.bounds
+            displayBounds.width() to displayBounds.height()
         } else {
-            val dm = DisplayMetrics()
+            val displayMetrics = DisplayMetrics()
             @Suppress("DEPRECATION")
-            wm.defaultDisplay.getRealMetrics(dm)
-            dm.widthPixels to dm.heightPixels
+            windowManager.defaultDisplay.getRealMetrics(displayMetrics)
+            displayMetrics.widthPixels to displayMetrics.heightPixels
         }
         val rotation = getSystemService(DisplayManager::class.java)
             .getDisplay(Display.DEFAULT_DISPLAY)?.rotation ?: 0
-        return ScreenInfo(w, h, rotation)
+        return ScreenInfo(screenWidthPx, screenHeightPx, rotation)
     }
 
     override fun onInterrupt() {

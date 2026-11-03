@@ -18,9 +18,9 @@ class AccessibilityNodeView(private val node: AccessibilityNodeInfo) : NodeView 
 
     override val boundsInScreen: PixelRect
         get() {
-            val r = Rect()
-            node.getBoundsInScreen(r)
-            return PixelRect(r.left, r.top, r.right, r.bottom)
+            val screenRect = Rect()
+            node.getBoundsInScreen(screenRect)
+            return PixelRect(screenRect.left, screenRect.top, screenRect.right, screenRect.bottom)
         }
 
     override val childCount: Int get() = node.childCount
