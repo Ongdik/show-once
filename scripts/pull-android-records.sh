@@ -15,9 +15,26 @@ APP_PACKAGE="com.ongdik.showonce.probe"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DESTINATION="$REPO_ROOT/data/android-records/$(date +%Y%m%d-%H%M%S)"
 
-# adb exec-out은 폰 쪽 실패를 종료 코드로 알려 주지 않는다. 앱 권한으로 읽을 수 있는지 먼저 확인한다.
-if ! adb shell run-as "$APP_PACKAGE" true >/dev/null 2>&1; then
-    echo "앱 권한으로 읽을 수 없습니다. 폰 연결, USB 디버깅, 앱이 디버그 빌드로 설치됐는지 확인하세요."
+# 실패하면 어느 단계에서 왜 실패했는지 보여 준다.
+# 1) Git Bash가 adb를 찾는가 (Android Studio와 함께 깔리지만 Git Bash PATH에는 없을 수 있다)
+if ! command -v adb >/dev/null 2>&1; then
+    echo "adb를 찾지 못했습니다. ~/.bashrc에 아래 줄을 추가하고 'source ~/.bashrc' 후 다시 실행하세요:"
+    echo '  export PATH="$HOME/AppData/Local/Android/Sdk/platform-tools:$PATH"'
+    exit 1
+fi
+
+# 2) 연결된 기기가 있는가
+connected_devices=$(adb devices | tr -d '\r' | awk 'NR > 1 && $2 == "device" { print $1 }')
+if [ -z "$connected_devices" ]; then
+    echo "연결된 기기가 없습니다. adb devices 결과:"
+    adb devices
+    exit 1
+fi
+
+# 3) 앱 권한(run-as)으로 읽을 수 있는가. adb exec-out은 폰 쪽 실패를 종료 코드로 알려 주지 않아서 먼저 확인한다.
+if ! run_as_output=$(adb shell run-as "$APP_PACKAGE" ls files 2>&1); then
+    echo "앱 권한으로 읽을 수 없습니다 (앱이 디버그 빌드로 설치됐는지 확인). adb가 돌려준 내용:"
+    echo "  $run_as_output"
     exit 1
 fi
 
