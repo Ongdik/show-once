@@ -17,6 +17,8 @@ data class NodeRecord(
     val clickable: Boolean,
     val editable: Boolean,
     val textHidden: Boolean,
+    /** 지금 화면에 보이는지 (isVisibleToUser). false면 bounds는 화면 가장자리로 잘린 값이라 위치로 쓰면 안 된다 */
+    val visible: Boolean = true,
     /** 다시 표시된 입력값을 •••로 가렸는지 (TypedValueMasker) */
     val textMasked: Boolean = false,
 )

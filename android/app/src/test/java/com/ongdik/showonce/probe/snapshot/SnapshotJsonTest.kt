@@ -18,7 +18,7 @@ class SnapshotJsonTest {
         assertEquals(
             """{"index":3,"depth":2,"text":"다음","description":null,"viewId":"com.app:id/next",""" +
                 """"className":"android.widget.Button","bounds":[0.1000,0.2500,0.6000,0.5000],""" +
-                """"clickable":true,"editable":false,"textHidden":false,"textMasked":false}""",
+                """"clickable":true,"editable":false,"textHidden":false,"visible":true,"textMasked":false}""",
             SnapshotJson.node(nextButton),
         )
     }

@@ -44,6 +44,7 @@ object SnapshotJson {
         "clickable" to record.clickable,
         "editable" to record.editable,
         "textHidden" to record.textHidden,
+        "visible" to record.visible,
         "textMasked" to record.textMasked,
     )
 

@@ -166,6 +166,19 @@ class SnapshotBuilderTest {
     }
 
     @Test
+    fun marksNodeScrolledOffScreenAsNotVisible() {
+        // #14에서 본 문제: 스크롤 밖 문장이 [0.1093,0.9738,0.7259,0.9738]처럼 높이 0 상자로 기록됐다.
+        val offScreenSentence = FakeNode(
+            text = "below the fold",
+            boundsInScreen = PixelRect(100, 2100, 700, 2200),
+            isVisibleToUser = false,
+        )
+        val record = singleRecordOf(offScreenSentence)
+        assertFalse(record.visible)
+        assertEquals(record.bounds.top, record.bounds.bottom, 0.0)
+    }
+
+    @Test
     fun returnsEmptyResultWhenRootIsMissing() {
         val result = SnapshotBuilder.collect(null, screen)
         assertTrue(result.nodes.isEmpty())
