@@ -11,7 +11,8 @@ import java.io.File
  * - 앱 화면에서 "기록 모두 지우기"로 쓰던 파일이 지워져도, 다음 줄에서 새 파일을 열어 이어 쓴다.
  *
  * 줄 내용은 만들지 않는다. 받은 줄을 그대로 쓰기만 한다. 줄은 SnapshotJson을 거친 것만 들어온다 (#17 결정).
- * 여러 스레드에서 불려도 되게 모든 공개 함수는 synchronized다.
+ * 서비스(쓰기 스레드)와 앱 화면(지우기)은 같은 프로세스라서, 모든 파일 작업을 같은 잠금(FILE_LOCK) 안에서 한다.
+ * 그래야 "있는지 확인 → 쓰기" 사이에 파일이 지워져 머리말 없는 파일이 생기는 일이 없다 (#17 설계 검토).
  */
 class RecordFileStore(
     private val recordsDirectory: File,
@@ -23,14 +24,12 @@ class RecordFileStore(
     private var sessionHeaderLine: String? = null
     private var currentFile: File? = null
 
-    @Synchronized
-    fun startSession(headerLine: String) {
+    fun startSession(headerLine: String) = synchronized(FILE_LOCK) {
         sessionHeaderLine = headerLine
         currentFile = openNewFile(headerLine)
     }
 
-    @Synchronized
-    fun append(line: String) {
+    fun append(line: String): Unit = synchronized(FILE_LOCK) {
         val headerLine = sessionHeaderLine ?: return // 세션 전에는 쓰지 않는다
         val lineBytes = (line + "\n").toByteArray(Charsets.UTF_8)
 
@@ -70,18 +69,22 @@ class RecordFileStore(
         const val DEFAULT_MAX_TOTAL_BYTES = 20L * 1024 * 1024
         const val FILE_EXTENSION = ".jsonl"
 
+        /** 기록 폴더의 모든 파일 작업이 쓰는 잠금 (같은 프로세스의 서비스와 앱 화면이 함께 쓴다) */
+        private val FILE_LOCK = Any()
+
         /** 기록 파일 목록, 오래된 것부터 (파일 이름이 시각 순서라서 이름순 = 시간순) */
-        fun recordFiles(recordsDirectory: File): List<File> =
+        fun recordFiles(recordsDirectory: File): List<File> = synchronized(FILE_LOCK) {
             recordsDirectory.listFiles { file -> file.isFile && file.name.endsWith(FILE_EXTENSION) }
                 ?.sortedBy { it.name }
                 .orEmpty()
-
-        fun summarize(recordsDirectory: File): Summary {
-            val files = recordFiles(recordsDirectory)
-            return Summary(fileCount = files.size, totalBytes = files.sumOf { it.length() })
         }
 
-        fun deleteAll(recordsDirectory: File) {
+        fun summarize(recordsDirectory: File): Summary = synchronized(FILE_LOCK) {
+            val files = recordFiles(recordsDirectory)
+            Summary(fileCount = files.size, totalBytes = files.sumOf { it.length() })
+        }
+
+        fun deleteAll(recordsDirectory: File) = synchronized(FILE_LOCK) {
             recordFiles(recordsDirectory).forEach { it.delete() }
         }
     }
