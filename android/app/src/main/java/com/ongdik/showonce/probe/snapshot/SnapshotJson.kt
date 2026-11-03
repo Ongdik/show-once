@@ -18,6 +18,7 @@ object SnapshotJson {
         "screen" to RawJson(screenJson(snapshot.screen)),
         "wallTimeMs" to snapshot.wallTimeMs,
         "eventTimeMs" to snapshot.eventTimeMs,
+        "contentRecorded" to snapshot.contentRecorded,
         "nodeCount" to snapshot.nodes.size,
         "truncated" to snapshot.truncated,
     )
@@ -28,6 +29,7 @@ object SnapshotJson {
         "screen" to RawJson(screenJson(click.screen)),
         "wallTimeMs" to click.wallTimeMs,
         "eventTimeMs" to click.eventTimeMs,
+        "contentRecorded" to click.contentRecorded,
         "node" to click.node?.let { RawJson(node(it)) },
     )
 
@@ -42,6 +44,7 @@ object SnapshotJson {
         "clickable" to record.clickable,
         "editable" to record.editable,
         "textHidden" to record.textHidden,
+        "textMasked" to record.textMasked,
     )
 
     private fun screenJson(screen: ScreenInfo) = jsonObject(
