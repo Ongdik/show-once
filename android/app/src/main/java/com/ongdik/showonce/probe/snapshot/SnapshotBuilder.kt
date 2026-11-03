@@ -64,6 +64,7 @@ object SnapshotBuilder {
             clickable = node.isClickable,
             editable = node.isEditable,
             textHidden = shouldHideText && !node.text.isNullOrBlank(),
+            visible = node.isVisibleToUser,
         )
     }
 

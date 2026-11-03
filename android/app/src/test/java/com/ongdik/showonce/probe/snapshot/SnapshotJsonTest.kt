@@ -18,7 +18,7 @@ class SnapshotJsonTest {
         assertEquals(
             """{"index":3,"depth":2,"text":"다음","description":null,"viewId":"com.app:id/next",""" +
                 """"className":"android.widget.Button","bounds":[0.1000,0.2500,0.6000,0.5000],""" +
-                """"clickable":true,"editable":false,"textHidden":false,"textMasked":false}""",
+                """"clickable":true,"editable":false,"textHidden":false,"visible":true,"textMasked":false}""",
             SnapshotJson.node(nextButton),
         )
     }
@@ -42,7 +42,7 @@ class SnapshotJsonTest {
     fun summaryContainsNodeCountAndScreenInfoButNotNodeContent() {
         val settingsSnapshot = Snapshot(
             reason = "windowChanged", packageName = "com.android.settings",
-            screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L,
+            screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L, elapsedRealtimeMs = 3L,
             nodes = listOf(nextButton), truncated = false, contentRecorded = true,
         )
         val summaryJson = SnapshotJson.summary(settingsSnapshot)
@@ -53,7 +53,41 @@ class SnapshotJsonTest {
 
     @Test
     fun writesNullNodeWhenClickSourceIsMissing() {
-        val clickWithoutSource = ClickRecord("com.app", ScreenInfo(1, 1, 0), 1L, 2L, node = null, contentRecorded = false)
+        val clickWithoutSource = ClickRecord("com.app", ScreenInfo(1, 1, 0), 1L, 2L, 3L, node = null, contentRecorded = false)
         assertTrue(SnapshotJson.click(clickWithoutSource).endsWith("\"node\":null}"))
+    }
+
+    private val twoNodeSettingsSnapshot = Snapshot(
+        reason = "windowChanged", packageName = "com.android.settings",
+        screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, eventTimeMs = 2L, elapsedRealtimeMs = 3L,
+        nodes = listOf(nextButton, nextButton.copy(index = 4, text = "취소")), truncated = false, contentRecorded = true,
+    )
+
+    @Test
+    fun writesSnapshotWithAllNodesAsSingleFileLine() {
+        val fileLine = SnapshotJson.snapshotLine(twoNodeSettingsSnapshot)
+        assertFalse(fileLine.contains("\n"))
+        assertTrue(fileLine.startsWith("{\"type\":\"screen\""))
+        assertTrue(fileLine.contains("\"elapsedRealtimeMs\":3"))
+        assertTrue(fileLine.contains("\"nodes\":[{\"index\":3,"))
+        assertTrue(fileLine.contains("\"text\":\"취소\""))
+        assertTrue(fileLine.endsWith("}]}"))
+    }
+
+    @Test
+    fun writesSessionHeaderWithThreeClocksAppVersionAndSettings() {
+        val header = SessionHeader(
+            formatVersion = 1, wallTimeMs = 100L, uptimeMs = 200L, elapsedRealtimeMs = 300L,
+            appVersionName = "1.0", appVersionCode = 1L,
+            allowedPackages = listOf("io.metamask", "com.android.settings"),
+            settleDelayMs = 500L, maxNodesPerSnapshot = 500, typedValueRememberMs = 60_000L,
+        )
+        assertEquals(
+            """{"type":"session","formatVersion":1,"wallTimeMs":100,"uptimeMs":200,"elapsedRealtimeMs":300,""" +
+                """"appVersionName":"1.0","appVersionCode":1,""" +
+                """"allowedPackages":["com.android.settings","io.metamask"],""" +
+                """"settleDelayMs":500,"maxNodesPerSnapshot":500,"typedValueRememberMs":60000}""",
+            SnapshotJson.sessionHeader(header),
+        )
     }
 }

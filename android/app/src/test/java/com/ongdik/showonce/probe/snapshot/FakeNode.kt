@@ -10,6 +10,7 @@ data class FakeNode(
     override val isEditable: Boolean = false,
     override val isPassword: Boolean = false,
     override val isShowingHintText: Boolean = false,
+    override val isVisibleToUser: Boolean = true,
     override val boundsInScreen: PixelRect = PixelRect(0, 0, 0, 0),
     val children: List<FakeNode?> = emptyList(),
 ) : NodeView {
