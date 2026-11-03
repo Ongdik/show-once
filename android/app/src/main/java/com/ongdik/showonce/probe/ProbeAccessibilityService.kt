@@ -157,7 +157,7 @@ class ProbeAccessibilityService : AccessibilityService() {
             nextFileName = { "records-${fileNameFormat.format(Date())}${RecordFileStore.FILE_EXTENSION}" },
         )
         val headerLine = SnapshotJson.sessionHeader(sessionHeader())
-        recordWriter.execute { store.startSession(headerLine) }
+        recordWriter.execute { runCatchingWriteFailure { store.startSession(headerLine) } }
         recordFileStore = store
     }
 
@@ -185,7 +185,18 @@ class ProbeAccessibilityService : AccessibilityService() {
     // 줄은 여기서(이벤트 스레드) 다 만들어 두고, 파일 쓰기만 별도 스레드에 맡긴다.
     private fun writeRecordLine(line: String) {
         val store = recordFileStore ?: return
-        recordWriter.execute { store.append(line) }
+        recordWriter.execute { runCatchingWriteFailure { store.append(line) } }
+    }
+
+    // 쓰기 스레드에서 예외(저장 공간 부족 등)가 나면 프로세스가 통째로 종료되고 접근성 서비스도 같이 죽는다.
+    // USB를 끈 채 은행 앱을 확인할 때는 그걸 바로 알 수 없으므로, 잡아서 로그만 남기고 계속한다.
+    // 로그에는 예외 종류만 남기고 줄 내용은 남기지 않는다.
+    private inline fun runCatchingWriteFailure(write: () -> Unit) {
+        try {
+            write()
+        } catch (writeFailure: Exception) {
+            ProbeLog.info("기록 파일 쓰기 실패: ${writeFailure.javaClass.simpleName}")
+        }
     }
 
     // 노드 위치(getBoundsInScreen)와 같은 기준인 화면 전체 크기
