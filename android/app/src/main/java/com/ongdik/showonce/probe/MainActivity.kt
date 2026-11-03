@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
     // Compose가 지켜보는 상태. 값이 바뀌면 화면이 다시 그려진다.
     private var serviceEnabled by mutableStateOf(false)
     private var recordSummary by mutableStateOf(RecordFileStore.Summary(fileCount = 0, totalBytes = 0))
+    private var pointerState by mutableStateOf(PointerState(serviceConnected = false, pointerShowing = false))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +47,9 @@ class MainActivity : ComponentActivity() {
                         recordSummary = recordSummary,
                         onOpenSettings = ::openAccessibilitySettings,
                         onDeleteAllRecords = ::deleteAllRecords,
+                        pointerState = pointerState,
+                        onShowPointer = ::showPointerAtScreenCenter,
+                        onHidePointer = ::hidePointer,
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -65,6 +69,27 @@ class MainActivity : ComponentActivity() {
             className = ProbeAccessibilityService::class.java.name,
         )
         refreshRecordSummary()
+        refreshPointerState()
+    }
+
+    // 서비스가 켜져 있어도 연결(onServiceConnected) 전이면 아직 포인터를 띄울 수 없다
+    private fun refreshPointerState() {
+        val service = ProbeAccessibilityService.connected()
+        pointerState = PointerState(
+            serviceConnected = service != null,
+            pointerShowing = service?.isPointerShowing == true,
+        )
+    }
+
+    // 고정 위치 시험이라 화면 가운데에 둔다. 10번에서는 찾은 노드의 비율 위치를 넘긴다.
+    private fun showPointerAtScreenCenter() {
+        ProbeAccessibilityService.connected()?.showPointer(centerRatioX = 0.5, centerRatioY = 0.5)
+        refreshPointerState()
+    }
+
+    private fun hidePointer() {
+        ProbeAccessibilityService.connected()?.hidePointer()
+        refreshPointerState()
     }
 
     // 파일 몇 개의 크기만 읽는 가벼운 작업이라 화면 스레드에서 한다.
@@ -83,6 +108,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class PointerState(val serviceConnected: Boolean, val pointerShowing: Boolean)
+
 /** 바이트 수를 사람이 읽기 쉬운 크기로. 1024 단위 */
 fun formatByteSize(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
@@ -96,6 +123,9 @@ fun ProbeScreen(
     recordSummary: RecordFileStore.Summary,
     onOpenSettings: () -> Unit,
     onDeleteAllRecords: () -> Unit,
+    pointerState: PointerState,
+    onShowPointer: () -> Unit,
+    onHidePointer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isDeleteConfirmationVisible by remember { mutableStateOf(false) }
@@ -130,6 +160,21 @@ fun ProbeScreen(
         ) {
             Text(stringResource(R.string.delete_all_records))
         }
+
+        Text(
+            text = stringResource(
+                if (pointerState.pointerShowing) R.string.pointer_status_showing else R.string.pointer_status_hidden,
+            ),
+        )
+        Button(onClick = onShowPointer, enabled = pointerState.serviceConnected) {
+            Text(stringResource(R.string.show_pointer_at_center))
+        }
+        OutlinedButton(onClick = onHidePointer, enabled = pointerState.pointerShowing) {
+            Text(stringResource(R.string.hide_pointer))
+        }
+        if (!pointerState.serviceConnected) {
+            Text(stringResource(R.string.pointer_needs_service))
+        }
     }
 
     // 실수로 누르지 않게 확인 창을 한 번 거친다.
@@ -162,6 +207,9 @@ fun ProbeScreenPreview() {
             recordSummary = RecordFileStore.Summary(fileCount = 2, totalBytes = 34_567),
             onOpenSettings = {},
             onDeleteAllRecords = {},
+            pointerState = PointerState(serviceConnected = true, pointerShowing = false),
+            onShowPointer = {},
+            onHidePointer = {},
         )
     }
 }

@@ -80,3 +80,19 @@ data class SessionHeader(
     val maxNodesPerSnapshot: Int,
     val typedValueRememberMs: Long,
 )
+
+/**
+ * 포인터를 켜거나 끄거나 회전으로 다시 놓은 기록 (#20). "포인터가 떠 있는 동안 은행 앱이 꺼졌다" 같은 판단에 쓴다.
+ * - centerRatioX/Y: 고리 중심의 0~1 비율 (끌 때는 마지막 위치)
+ * - wallTimeMs: 시스템 시각
+ * - elapsedRealtimeMs: 기록한 순간의 SystemClock.elapsedRealtime. 스냅샷·클릭·머리말과 같은 시계라서 기록끼리 시각을 맞출 수 있다.
+ *   시스템 이벤트가 아니라서 uptime 기준 eventTimeMs는 없다.
+ */
+data class PointerRecord(
+    val shown: Boolean,
+    val centerRatioX: Double,
+    val centerRatioY: Double,
+    val screen: ScreenInfo,
+    val wallTimeMs: Long,
+    val elapsedRealtimeMs: Long,
+)

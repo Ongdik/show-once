@@ -2,6 +2,8 @@ package com.ongdik.showonce.probe
 
 import android.accessibilityservice.AccessibilityService
 import android.hardware.display.DisplayManager
+import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -11,16 +13,19 @@ import android.view.Display
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import java.io.File
+import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import com.ongdik.showonce.probe.pointer.PointerOverlay
 import com.ongdik.showonce.probe.record.RecordFileStore
 import com.ongdik.showonce.probe.snapshot.AccessibilityNodeView
 import com.ongdik.showonce.probe.snapshot.AppAllowList
 import com.ongdik.showonce.probe.snapshot.ClickRecord
 import com.ongdik.showonce.probe.snapshot.NodeRecord
+import com.ongdik.showonce.probe.snapshot.PointerRecord
 import com.ongdik.showonce.probe.snapshot.RepeatFilter
 import com.ongdik.showonce.probe.snapshot.ScreenInfo
 import com.ongdik.showonce.probe.snapshot.SessionHeader
@@ -50,6 +55,9 @@ import com.ongdik.showonce.probe.snapshot.TypedValueMasker
  *
  * 기록 파일 (#17): 같은 기록을 앱 내부 저장소(files/records/)에도 한 줄 JSON으로 쌓는다.
  * USB 디버깅을 끈 채 은행 앱을 확인할 때도 기록이 남게 하기 위해서다. 파일 쓰기는 별도 스레드 하나에서 한다.
+ *
+ * 포인터 (#20): 앱 화면의 버튼으로 다른 앱 위에 고정 포인터를 띄우고 내린다 (PointerOverlay).
+ * 화면과 서비스는 같은 프로세스라서, 연결될 때 자신을 약한 참조로 알려 두고 화면이 connected()로 찾는다.
  */
 class ProbeAccessibilityService : AccessibilityService() {
 
@@ -60,12 +68,20 @@ class ProbeAccessibilityService : AccessibilityService() {
     private var pendingEventTime = 0L
     private var recordFileStore: RecordFileStore? = null
     private val recordWriter: ExecutorService = Executors.newSingleThreadExecutor()
+    private var pointerOverlay: PointerOverlay? = null
+
+    val isPointerShowing: Boolean get() = pointerOverlay?.isShowing == true
     private val captureWhenSettled = Runnable { captureScreen("contentSettled", pendingEventTime) }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         ProbeLog.initialize(this)
         startRecordFile()
+        // 접근성 오버레이는 서비스 자신의 WindowManager로만 띄울 수 있다.
+        // 같은 서비스에 연결이 두 번 오면 떠 있던 옛 창을 지울 방법이 없어지므로 먼저 내린다.
+        pointerOverlay?.hide()
+        pointerOverlay = PointerOverlay(this, getSystemService(WindowManager::class.java))
+        connectedServiceReference = WeakReference(this)
         ProbeLog.info("접근성 서비스 연결됨")
     }
 
@@ -153,6 +169,54 @@ class ProbeAccessibilityService : AccessibilityService() {
         writeRecordLine(clickLine)
     }
 
+    /** 고리 중심을 0~1 비율 위치에 두고 포인터를 띄운다 (이미 떠 있으면 옮긴다). 화면 스레드에서 부른다 */
+    fun showPointer(centerRatioX: Double, centerRatioY: Double) {
+        val overlay = pointerOverlay ?: return
+        val screen = screenInfo()
+        overlay.show(centerRatioX, centerRatioY, screen)
+        recordPointer(shown = true, centerRatioX, centerRatioY, screen)
+    }
+
+    // 끌 때도 마지막 위치를 남긴다 (0,0으로 남기면 실제 위치 (0,0)과 구분되지 않는다)
+    fun hidePointer() {
+        val overlay = pointerOverlay ?: return
+        if (!overlay.isShowing) return
+        overlay.hide()
+        recordPointer(shown = false, overlay.centerRatioX, overlay.centerRatioY, screenInfo())
+    }
+
+    private fun recordPointer(shown: Boolean, centerRatioX: Double, centerRatioY: Double, screen: ScreenInfo) {
+        val pointerLine = SnapshotJson.pointer(
+            PointerRecord(
+                shown = shown,
+                centerRatioX = centerRatioX,
+                centerRatioY = centerRatioY,
+                screen = screen,
+                wallTimeMs = System.currentTimeMillis(),
+                elapsedRealtimeMs = SystemClock.elapsedRealtime(),
+            ),
+        )
+        ProbeLog.debug("pointer $pointerLine")
+        writeRecordLine(pointerLine)
+    }
+
+    // 회전 등으로 화면 크기가 바뀌면 같은 비율 위치로 다시 놓는다
+    // 기록에도 한 줄 남겨, 회전 뒤 마지막 포인터 기록의 화면 크기가 실제와 맞게 한다.
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val overlay = pointerOverlay ?: return
+        if (!overlay.isShowing) return
+        val screen = screenInfo()
+        overlay.reposition(screen)
+        recordPointer(shown = true, overlay.centerRatioX, overlay.centerRatioY, screen)
+    }
+
+    // 연결이 끊긴 뒤 onDestroy 전에 화면이 포인터를 부르면 무효가 된 창 권한으로 띄우게 되므로, 여기서도 참조를 지운다.
+    override fun onUnbind(intent: Intent?): Boolean {
+        if (connectedServiceReference?.get() === this) connectedServiceReference = null
+        return super.onUnbind(intent)
+    }
+
     private fun startRecordFile() {
         val fileNameFormat = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.ROOT)
         val store = RecordFileStore(
@@ -229,6 +293,8 @@ class ProbeAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         handler.removeCallbacks(captureWhenSettled)
+        hidePointer()
+        if (connectedServiceReference?.get() === this) connectedServiceReference = null
         recordWriter.shutdown() // 이미 맡긴 쓰기는 끝까지 한다
         ProbeLog.info("접근성 서비스 종료됨")
         super.onDestroy()
@@ -239,6 +305,13 @@ class ProbeAccessibilityService : AccessibilityService() {
     companion object {
         private const val SETTLE_DELAY_MS = 500L
         const val RECORD_FORMAT_VERSION = 1
+
+        // 약한 참조: 화면이 서비스를 붙잡아 서비스가 정리되지 못하는 일이 없게
+        @Volatile
+        private var connectedServiceReference: WeakReference<ProbeAccessibilityService>? = null
+
+        /** 연결된 서비스. 접근성 서비스가 꺼져 있으면 null */
+        fun connected(): ProbeAccessibilityService? = connectedServiceReference?.get()
 
         /** 기록 파일 위치. 앱 내부 저장소라 다른 앱이나 USB 파일 탐색기로 읽을 수 없다 */
         fun recordsDirectory(context: android.content.Context): File = File(context.filesDir, "records")

@@ -16,4 +16,11 @@
     <string name="delete_all_records_confirm">이 폰에 쌓인 화면 기록 파일을 모두 지웁니다. 되돌릴 수 없습니다.</string>
     <string name="delete">지우기</string>
     <string name="cancel">취소</string>
+
+    <!-- 포인터 -->
+    <string name="pointer_status_showing">포인터: 떠 있음</string>
+    <string name="pointer_status_hidden">포인터: 꺼짐</string>
+    <string name="show_pointer_at_center">포인터 켜기 (화면 가운데)</string>
+    <string name="hide_pointer">포인터 끄기</string>
+    <string name="pointer_needs_service">포인터는 접근성 서비스를 켠 뒤에 쓸 수 있습니다.</string>
 </resources>

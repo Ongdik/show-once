@@ -74,6 +74,16 @@ object SnapshotJson {
         "textMasked" to record.textMasked,
     )
 
+    /** 포인터를 켜거나 끈 기록 한 줄 */
+    fun pointer(record: PointerRecord): String = jsonObject(
+        "type" to "pointer",
+        "shown" to record.shown,
+        "center" to RawJson(ratioListJson(listOf(record.centerRatioX, record.centerRatioY))),
+        "screen" to RawJson(screenJson(record.screen)),
+        "wallTimeMs" to record.wallTimeMs,
+        "elapsedRealtimeMs" to record.elapsedRealtimeMs,
+    )
+
     private fun screenJson(screen: ScreenInfo) = jsonObject(
         "widthPx" to screen.widthPx,
         "heightPx" to screen.heightPx,
@@ -82,8 +92,10 @@ object SnapshotJson {
 
     // [left, top, right, bottom]. Locale.ROOT: 기기 언어가 독일어 등이어도 소수점이 쉼표로 바뀌지 않게.
     private fun boundsJson(bounds: RatioRect) =
-        listOf(bounds.left, bounds.top, bounds.right, bounds.bottom)
-            .joinToString(",", "[", "]") { ratio -> String.format(Locale.ROOT, "%.4f", ratio) }
+        ratioListJson(listOf(bounds.left, bounds.top, bounds.right, bounds.bottom))
+
+    private fun ratioListJson(ratios: List<Double>) =
+        ratios.joinToString(",", "[", "]") { ratio -> String.format(Locale.ROOT, "%.4f", ratio) }
 
     /** 이미 JSON인 조각 (따옴표로 감싸지 않는다) */
     private class RawJson(val json: String)
