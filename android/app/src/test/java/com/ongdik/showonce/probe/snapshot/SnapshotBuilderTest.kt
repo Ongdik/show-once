@@ -99,6 +99,47 @@ class SnapshotBuilderTest {
     }
 
     @Test
+    fun hidesSingleCharacterTextOfClickedKeypadKey() {
+        val keypadKey = FakeNode(text = "7", isClickable = true)
+        val clickRecord = SnapshotBuilder.toClickedNodeRecord(keypadKey, screen)
+        assertNull(clickRecord.text)
+        assertTrue(clickRecord.textHidden)
+    }
+
+    @Test
+    fun hidesSingleCharacterDescriptionOfClickedKeypadKey() {
+        val keypadKey = FakeNode(description = "3", isClickable = true)
+        val clickRecord = SnapshotBuilder.toClickedNodeRecord(keypadKey, screen)
+        assertNull(clickRecord.description)
+        assertTrue(clickRecord.textHidden)
+    }
+
+    @Test
+    fun keepsTextOfClickedNormalButton() {
+        val confirmButton = FakeNode(text = "확인", isClickable = true)
+        val clickRecord = SnapshotBuilder.toClickedNodeRecord(confirmButton, screen)
+        assertEquals("확인", clickRecord.text)
+        assertFalse(clickRecord.textHidden)
+    }
+
+    @Test
+    fun knownLimitationRecordsTypedValueWhenAppEchoesItInAnotherTextView() {
+        // 알려진 한계: 입력란 안의 값은 숨기지만, 앱이 같은 값을 일반 글자로 다시 보여 주면 그 글자는 남는다.
+        // 파일 저장 이슈에서 "다시 표시된 값 가리기"를 넣으면 이 테스트를 바꾼다.
+        val searchScreen = FakeNode(
+            children = listOf(
+                FakeNode(text = "abc123", isEditable = true),
+                FakeNode(text = "No results for abc123"),
+            ),
+        )
+        val records = SnapshotBuilder.collect(searchScreen, screen).nodes
+        val searchField = records.single { it.editable }
+        val echoedResult = records.single { it.text?.startsWith("No results") == true }
+        assertNull(searchField.text)
+        assertEquals("No results for abc123", echoedResult.text)
+    }
+
+    @Test
     fun returnsEmptyResultWhenRootIsMissing() {
         val result = SnapshotBuilder.collect(null, screen)
         assertTrue(result.nodes.isEmpty())
