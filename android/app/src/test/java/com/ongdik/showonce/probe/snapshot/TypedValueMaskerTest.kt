@@ -55,6 +55,15 @@ class TypedValueMaskerTest {
     }
 
     @Test
+    fun forgetsExpiredValuesWhenRememberingEvenWithoutMasking() {
+        val masker = TypedValueMasker()
+        masker.remember(listOf("abc123"), nowMs = 0)
+        val afterDuration = TypedValueMasker.REMEMBER_DURATION_MS + 1
+        masker.remember(listOf("other value"), nowMs = afterDuration)
+        assertEquals("abc123", masker.mask(textRecord("abc123"), nowMs = afterDuration).text)
+    }
+
+    @Test
     fun keepsOnlyMostRecentValuesWhenLimitIsExceeded() {
         val masker = TypedValueMasker()
         val manyValues = (1..TypedValueMasker.MAX_REMEMBERED_VALUES + 1).map { valueNumber -> "value$valueNumber" }

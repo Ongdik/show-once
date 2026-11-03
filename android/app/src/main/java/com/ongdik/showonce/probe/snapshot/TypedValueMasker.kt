@@ -20,6 +20,8 @@ class TypedValueMasker {
     private val rememberedValues = ArrayDeque<RememberedValue>()
 
     fun remember(hiddenValues: List<String>, nowMs: Long) {
+        // 가리기를 하지 않는 동안(허용 목록 밖 앱)에도 1분이 지나면 잊도록, 기억할 때도 만료된 값을 지운다.
+        forgetExpired(nowMs)
         for (hiddenValue in hiddenValues) {
             val trimmedValue = hiddenValue.trim()
             if (trimmedValue.length < MIN_VALUE_LENGTH) continue
