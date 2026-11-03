@@ -90,4 +90,17 @@ class SnapshotJsonTest {
             SnapshotJson.sessionHeader(header),
         )
     }
+
+    @Test
+    fun writesPointerShownRecordWithCenterRatio() {
+        val pointerShown = PointerRecord(
+            shown = true, centerRatioX = 0.5, centerRatioY = 0.25,
+            screen = ScreenInfo(1080, 2400, 0), wallTimeMs = 1L, elapsedRealtimeMs = 2L,
+        )
+        assertEquals(
+            """{"type":"pointer","shown":true,"center":[0.5000,0.2500],""" +
+                """"screen":{"widthPx":1080,"heightPx":2400,"rotation":0},"wallTimeMs":1,"elapsedRealtimeMs":2}""",
+            SnapshotJson.pointer(pointerShown),
+        )
+    }
 }

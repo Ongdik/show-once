@@ -80,3 +80,16 @@ data class SessionHeader(
     val maxNodesPerSnapshot: Int,
     val typedValueRememberMs: Long,
 )
+
+/**
+ * 포인터를 켜거나 끈 기록 (#20). "포인터가 떠 있는 동안 은행 앱이 꺼졌다" 같은 판단을 하려면 필요하다.
+ * 위치는 고리 중심의 0~1 비율.
+ */
+data class PointerRecord(
+    val shown: Boolean,
+    val centerRatioX: Double,
+    val centerRatioY: Double,
+    val screen: ScreenInfo,
+    val wallTimeMs: Long,
+    val elapsedRealtimeMs: Long,
+)
