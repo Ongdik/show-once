@@ -1,19 +1,22 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample data extraction rules file; uncomment and customize as necessary.
-   See https://developer.android.com/about/versions/12/backup-restore#xml-changes
-   for details.
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    안드로이드 12(API 31) 이상의 백업·기기 이전 규칙. 이 앱의 데이터는 전부 제외한다.
+    화면 기록은 "부모님 화면 정보는 기기 안에서만"(노션 13.6) 원칙에 따라 폰 밖으로 나가면 안 된다.
+    안드로이드 12부터는 allowBackup="false"만으로는 기기 이전(새 폰으로 옮기기)이 막히지 않아서 이 파일도 필요하다.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- TODO: Use <include> and <exclude> to control what is backed up.
-        <include .../>
-        <exclude .../>
-        -->
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
-    <!--
     <device-transfer>
-        <include .../>
-        <exclude .../>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </device-transfer>
-    -->
 </data-extraction-rules>
